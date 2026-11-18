@@ -1,0 +1,14 @@
+{
+  "name": "test-mini-app",
+  "version": "1.0.0",
+  "description": "Telegram Mini App Casino (All files in one flat folder)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "sqlite3": "^5.1.7"
+  }
+}
