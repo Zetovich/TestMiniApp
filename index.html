@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Колесо Удачи</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(22, 27, 46, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-glow: rgba(245, 158, 11, 0.4);
+      --btn-gradient: linear-gradient(135deg, #f59e0b, #ef4444);
+      --wheel-size: 320px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #1a2238 0%, var(--bg) 75%);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .screen.active {
+      display: flex;
+      animation: fadeIn 0.25s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* TOP USER BAR */
+    .user-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 10px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .user-bar:active {
+      transform: scale(0.98);
+      background: rgba(30, 41, 69, 0.9);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--accent);
+      background: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .user-meta .name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .user-meta .username {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .user-badge {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* WHEEL CONTAINER */
+    .wheel-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin: 20px 0;
+    }
+
+    .wheel-title {
+      font-size: 26px;
+      font-weight: 800;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b, #ef4444);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+
+    .wheel-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .wheel-box {
+      position: relative;
+      width: var(--wheel-size);
+      height: var(--wheel-size);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* POINTER */
+    .wheel-pointer {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 32px;
+      height: 40px;
+      z-index: 10;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+    }
+
+    .wheel-pointer svg {
+      width: 100%;
+      height: 100%;
+      fill: #ef4444;
+      stroke: #ffffff;
+      stroke-width: 2;
+    }
+
+    /* WHEEL DISC */
+    .wheel-disc {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 35px rgba(245, 158, 11, 0.25), 0 10px 30px rgba(0, 0, 0, 0.5);
+      border: 6px solid #1e293b;
+      transition: transform 4.5s cubic-bezier(0.12, 0.8, 0.18, 1);
+    }
+
+    .wheel-disc svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* CENTER BUTTON */
+    .wheel-center-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      background: var(--btn-gradient);
+      border: 4px solid #ffffff;
+      box-shadow: 0 0 20px var(--accent-glow), 0 4px 15px rgba(0, 0, 0, 0.6);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .wheel-center-btn:active:not(:disabled) {
+      transform: translate(-50%, -50%) scale(0.92);
+      filter: brightness(1.1);
+    }
+
+    .wheel-center-btn:disabled {
+      opacity: 0.75;
+      cursor: not-allowed;
+    }
+
+    /* STATS CHIPS */
+    .prizes-legend {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .prize-chip {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* PROFILE SCREEN */
+    .profile-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .btn-back {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 10px 18px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s, transform 0.15s;
+    }
+
+    .btn-back:active {
+      transform: scale(0.96);
+      background: rgba(30, 41, 69, 0.9);
+    }
+
+    .profile-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 20px;
+      backdrop-filter: blur(12px);
+    }
+
+    .profile-card .avatar-large {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      border: 3px solid var(--accent);
+      margin-bottom: 14px;
+      background: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: bold;
+      overflow: hidden;
+      box-shadow: 0 0 25px var(--accent-glow);
+    }
+
+    .profile-card .avatar-large img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .profile-card .full-name {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .profile-card .user-tag {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .profile-card .user-id {
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 4px 12px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .stats-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .stats-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .stat-item {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .btn-main {
+      width: 100%;
+      background: var(--btn-gradient);
+      color: #ffffff;
+      border: none;
+      padding: 16px;
+      border-radius: 18px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35);
+      transition: transform 0.15s;
+    }
+
+    .btn-main:active {
+      transform: scale(0.98);
+    }
+
+    /* WIN MODAL */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      animation: modalFade 0.25s ease-out;
+    }
+
+    @keyframes modalFade {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-card {
+      background: #161b2e;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 26px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-emoji {
+      font-size: 64px;
+      margin-bottom: 12px;
+      animation: bounce 0.6s ease infinite alternate;
+    }
+
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-8px); }
+    }
+
+    .modal-title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .modal-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+    }
+
+    .modal-btn {
+      width: 100%;
+      background: var(--btn-gradient);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 14px;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SCREEN 1: WHEEL -->
+  <div id="screen-wheel" class="screen active">
+    <!-- User Top Bar -->
+    <div class="user-bar" id="userBarBtn">
+      <div class="user-info">
+        <div class="avatar" id="topAvatar">?</div>
+        <div class="user-meta">
+          <div class="name" id="topName">Игрок</div>
+          <div class="username" id="topUsername">@user</div>
+        </div>
+      </div>
+      <div class="user-badge">Профиль ›</div>
+    </div>
+
+    <!-- Main Wheel Section -->
+    <div class="wheel-section">
+      <div class="wheel-title">Колесо Удачи</div>
+      <div class="wheel-subtitle">Крути бесплатно без ограничений!</div>
+
+      <div class="wheel-box">
+        <!-- Top Pointer -->
+        <div class="wheel-pointer">
+          <svg viewBox="0 0 24 30">
+            <path d="M12 28 L3 6 Q2 2 6 2 L18 2 Q22 2 21 6 Z" />
+          </svg>
+        </div>
+
+        <!-- Wheel Disc -->
+        <div class="wheel-disc" id="wheelDisc">
+          <svg id="wheelSvg" viewBox="0 0 300 300"></svg>
+        </div>
+
+        <!-- Center Spin Button -->
+        <button class="wheel-center-btn" id="spinBtn">
+          <span>КРУТИТЬ</span>
+        </button>
+      </div>
+
+      <!-- Legend -->
+      <div class="prizes-legend">
+        <div class="prize-chip">🍒 Вишня</div>
+        <div class="prize-chip">🍋 Лимон</div>
+        <div class="prize-chip">⭐ Звезда</div>
+        <div class="prize-chip">💎 Алмаз</div>
+        <div class="prize-chip">🎁 Подарок</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: PROFILE -->
+  <div id="screen-profile" class="screen">
+    <div class="profile-header">
+      <button class="btn-back" id="backBtn">
+        ← Назад к колесу
+      </button>
+    </div>
+
+    <div class="profile-card">
+      <div class="avatar-large" id="profileAvatar">?</div>
+      <div class="full-name" id="profileName">Пользователь</div>
+      <div class="user-tag" id="profileUsername">@username</div>
+      <div class="user-id" id="profileId">ID: 00000000</div>
+    </div>
+
+    <div class="stats-card">
+      <div class="stats-title">📊 Статистика игры</div>
+      <div class="stats-grid">
+        <div class="stat-item" style="grid-column: span 2;">
+          <span class="stat-label">🎯 Всего вращений</span>
+          <span class="stat-val" id="statTotal">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">🍒 Вишни</span>
+          <span class="stat-val" id="statCherry">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">🍋 Лимоны</span>
+          <span class="stat-val" id="statLemon">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">⭐ Звёзды</span>
+          <span class="stat-val" id="statStar">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">💎 Алмазы</span>
+          <span class="stat-val" id="statDiamond">0</span>
+        </div>
+        <div class="stat-item" style="grid-column: span 2;">
+          <span class="stat-label">🎁 Подарки</span>
+          <span class="stat-val" id="statGift">0</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-main" id="profileReturnBtn">Крутить колесо</button>
+  </div>
+
+  <!-- WIN POPUP MODAL -->
+  <div class="modal-overlay" id="winModal">
+    <div class="modal-card">
+      <div class="modal-emoji" id="winEmoji">🎁</div>
+      <div class="modal-title" id="winTitle">Победа!</div>
+      <div class="modal-desc" id="winDesc">Вам выпал приз</div>
+      <button class="modal-btn" id="modalCloseBtn">Крутить ещё раз</button>
+    </div>
+  </div>
+
+  <script>
+    // 1. Initialize Telegram WebApp
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    // 2. Wheel Prizes Configuration (10 slices)
+    const SECTORS = [
+      { emoji: '🍒', name: 'Вишня', color: '#dc2626' },
+      { emoji: '🍋', name: 'Лимон', color: '#d97706' },
+      { emoji: '⭐', name: 'Звезда', color: '#7c3aed' },
+      { emoji: '💎', name: 'Алмаз', color: '#0284c7' },
+      { emoji: '🎁', name: 'Подарок', color: '#db2777' },
+      { emoji: '🍒', name: 'Вишня', color: '#b91c1c' },
+      { emoji: '🍋', name: 'Лимон', color: '#b45309' },
+      { emoji: '⭐', name: 'Звезда', color: '#6d28d9' },
+      { emoji: '💎', name: 'Алмаз', color: '#0369a1' },
+      { emoji: '🎁', name: 'Подарок', color: '#be185d' }
+    ];
+
+    const stats = {
+      total: 0,
+      '🍒': 0,
+      '🍋': 0,
+      '⭐': 0,
+      '💎': 0,
+      '🎁': 0
+    };
+
+    // 3. Render SVG Wheel
+    function renderWheel() {
+      const svg = document.getElementById('wheelSvg');
+      const numSectors = SECTORS.length;
+      const anglePerSector = 360 / numSectors;
+      const r = 145;
+      const cx = 150;
+      const cy = 150;
+
+      let html = '';
+
+      SECTORS.forEach((item, i) => {
+        // Sector angle range where slice 0 center is at 12 o'clock (-90 deg)
+        const startDeg = -90 + (i * anglePerSector) - (anglePerSector / 2);
+        const endDeg = startDeg + anglePerSector;
+        const midDeg = -90 + (i * anglePerSector);
+
+        const startRad = (startDeg * Math.PI) / 180;
+        const endRad = (endDeg * Math.PI) / 180;
+        const midRad = (midDeg * Math.PI) / 180;
+
+        const x1 = cx + r * Math.cos(startRad);
+        const y1 = cy + r * Math.sin(startRad);
+        const x2 = cx + r * Math.cos(endRad);
+        const y2 = cy + r * Math.sin(endRad);
+
+        // SVG slice path
+        html += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z" fill="${item.color}" stroke="#1e293b" stroke-width="2"/>`;
+
+        // Emoji placement
+        const textRadius = 100;
+        const tx = cx + textRadius * Math.cos(midRad);
+        const ty = cy + textRadius * Math.sin(midRad);
+
+        html += `<text x="${tx}" y="${ty}" font-size="28" text-anchor="middle" dominant-baseline="central" transform="rotate(${midDeg + 90}, ${tx}, ${ty})">${item.emoji}</text>`;
+      });
+
+      svg.innerHTML = html;
+    }
+
+    // 4. User Profile Data
+    function initUser() {
+      const user = tg?.initDataUnsafe?.user;
+
+      const firstName = user?.first_name || 'Игрок';
+      const lastName = user?.last_name ? ` ${user.last_name}` : '';
+      const fullName = firstName + lastName;
+      const username = user?.username ? `@${user.username}` : 'без юзернейма';
+      const userId = user?.id ? `ID: ${user.id}` : 'ID: 777000123';
+      const photoUrl = user?.photo_url;
+
+      // Top bar
+      document.getElementById('topName').textContent = fullName;
+      document.getElementById('topUsername').textContent = username;
+
+      // Profile page
+      document.getElementById('profileName').textContent = fullName;
+      document.getElementById('profileUsername').textContent = username;
+      document.getElementById('profileId').textContent = userId;
+
+      // Avatars
+      const topAvatar = document.getElementById('topAvatar');
+      const profileAvatar = document.getElementById('profileAvatar');
+
+      if (photoUrl) {
+        topAvatar.innerHTML = `<img src="${photoUrl}" alt="avatar">`;
+        profileAvatar.innerHTML = `<img src="${photoUrl}" alt="avatar">`;
+      } else {
+        const initial = firstName.charAt(0).toUpperCase() || 'U';
+        topAvatar.textContent = initial;
+        profileAvatar.textContent = initial;
+      }
+    }
+
+    // 5. Navigation between screens
+    const screenWheel = document.getElementById('screen-wheel');
+    const screenProfile = document.getElementById('screen-profile');
+
+    function openProfile() {
+      screenWheel.classList.remove('active');
+      screenProfile.classList.add('active');
+      if (tg?.BackButton) {
+        tg.BackButton.show();
+      }
+    }
+
+    function openWheel() {
+      screenProfile.classList.remove('active');
+      screenWheel.classList.add('active');
+      if (tg?.BackButton) {
+        tg.BackButton.hide();
+      }
+    }
+
+    document.getElementById('userBarBtn').addEventListener('click', openProfile);
+    document.getElementById('backBtn').addEventListener('click', openWheel);
+    document.getElementById('profileReturnBtn').addEventListener('click', openWheel);
+
+    if (tg?.BackButton) {
+      tg.BackButton.onClick(openWheel);
+    }
+
+    // 6. Spinning Logic
+    const wheelDisc = document.getElementById('wheelDisc');
+    const spinBtn = document.getElementById('spinBtn');
+    const winModal = document.getElementById('winModal');
+    const winEmoji = document.getElementById('winEmoji');
+    const winTitle = document.getElementById('winTitle');
+    const winDesc = document.getElementById('winDesc');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+    let currentRotation = 0;
+    let isSpinning = false;
+
+    function spin() {
+      if (isSpinning) return;
+      isSpinning = true;
+      spinBtn.disabled = true;
+
+      // Haptic feedback on start
+      try {
+        tg?.HapticFeedback?.impactOccurred('medium');
+      } catch (e) {}
+
+      const numSectors = SECTORS.length;
+      const targetIndex = Math.floor(Math.random() * numSectors);
+      const anglePerSector = 360 / numSectors;
+
+      // Exact angle to align winning slice with 12 o'clock pointer
+      const targetAngle = (numSectors - targetIndex) * anglePerSector;
+      const fullRotations = (5 + Math.floor(Math.random() * 2)) * 360; // 5-6 full turns
+      const jitter = (Math.random() - 0.5) * (anglePerSector * 0.6); // slight organic offset
+
+      // Compute final rotation step
+      const currentMod = currentRotation % 360;
+      const additionalRotation = (targetAngle - currentMod + 360) % 360;
+      currentRotation += fullRotations + additionalRotation + jitter;
+
+      wheelDisc.style.transform = `rotate(${currentRotation}deg)`;
+
+      // When rotation ends
+      setTimeout(() => {
+        isSpinning = false;
+        spinBtn.disabled = false;
+
+        const wonPrize = SECTORS[targetIndex];
+
+        // Update statistics
+        stats.total++;
+        stats[wonPrize.emoji] = (stats[wonPrize.emoji] || 0) + 1;
+        updateStatsUI();
+
+        // Haptic feedback on win
+        try {
+          tg?.HapticFeedback?.notificationOccurred('success');
+        } catch (e) {}
+
+        // Show win modal
+        winEmoji.textContent = wonPrize.emoji;
+        winTitle.textContent = `Вы выиграли: ${wonPrize.name}!`;
+        winDesc.textContent = `Поздравляем! Вам выпал символ ${wonPrize.emoji}`;
+        winModal.classList.add('active');
+      }, 4500);
+    }
+
+    function updateStatsUI() {
+      document.getElementById('statTotal').textContent = stats.total;
+      document.getElementById('statCherry').textContent = stats['🍒'];
+      document.getElementById('statLemon').textContent = stats['🍋'];
+      document.getElementById('statStar').textContent = stats['⭐'];
+      document.getElementById('statDiamond').textContent = stats['💎'];
+      document.getElementById('statGift').textContent = stats['🎁'];
+    }
+
+    spinBtn.addEventListener('click', spin);
+    modalCloseBtn.addEventListener('click', () => {
+      winModal.classList.remove('active');
+    });
+
+    // Init App
+    renderWheel();
+    initUser();
+  </script>
+</body>
+</html>
