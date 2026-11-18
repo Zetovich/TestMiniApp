@@ -1,9 +1,3 @@
-/**
- * Telegram Mini App - Сервер NEON CASINO
- * Все файлы находятся в одной папке без вложенных директорий.
- * Стек: Node.js + Express + Socket.io + SQLite
- */
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -12,7 +6,9 @@ const crypto = require('crypto');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+
+// Твой токен вставлен сюда
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '9043576207:AAG8IGLNGs_NcqHiFXnBGVvmcSyOiTxqtZQ';
 
 const app = express();
 const server = http.createServer(app);
@@ -20,18 +16,19 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
-// Раздача файлов напрямую из текущей директории (без папки public)
-app.use(express.static(__dirname));
+app.use(express.static(__dirname, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.db') || filePath.endsWith('server.js')) {
+      res.status(403).end();
+    }
+  }
+}));
 app.use(express.json());
 
-// Маршрут для главной страницы
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ==========================================
-// 1. БАЗА ДАННЫХ SQLITE (casino.db)
-// ==========================================
 const db = new sqlite3.Database(path.join(__dirname, 'casino.db'), (err) => {
   if (err) {
     console.error('Ошибка SQLite:', err.message);
@@ -40,7 +37,6 @@ const db = new sqlite3.Database(path.join(__dirname, 'casino.db'), (err) => {
   }
 });
 
-// Инициализация таблицы пользователей
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -97,9 +93,6 @@ async function modifyBalance(userId, delta) {
   return updated ? updated.balance : 0;
 }
 
-// ==========================================
-// 2. ВАЛИДАЦИЯ TELEGRAM initData
-// ==========================================
 function validateTelegramInitData(initData) {
   if (!initData || typeof initData !== 'string') return null;
 
@@ -137,9 +130,6 @@ function validateTelegramInitData(initData) {
   }
 }
 
-// ==========================================
-// 3. КОНФИГУРАЦИЯ "КОЛЕСО УДАЧИ"
-// ==========================================
 const WHEEL_SECTORS = [
   { index: 0, type: 'stars', prize: '⭐', amount: 1, label: '1 ⭐', color: '#1e293b' },
   { index: 1, type: 'gift', prize: '🧸', amount: 0, label: 'Мишка', color: '#0f172a' },
@@ -155,9 +145,6 @@ const WHEEL_SECTORS = [
 
 const SPIN_COST = 25;
 
-// ==========================================
-// 4. МУЛЬТИПЛЕЕРНЫЙ ДВИЖОК "КРАШ"
-// ==========================================
 const crashEngine = {
   phase: 'WAITING',
   countdown: 5.0,
@@ -276,9 +263,6 @@ setInterval(() => {
 
 crashEngine.startRound();
 
-// ==========================================
-// 5. ОБРАБОТКА ПОДКЛЮЧЕНИЙ SOCKET.IO
-// ==========================================
 io.on('connection', (socket) => {
   let currentUser = null;
 
@@ -448,7 +432,6 @@ io.on('connection', (socket) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`==========================================`);
   console.log(`🚀 NEON CASINO запущено на порту ${PORT}`);
-  console.log(`📁 Все файлы в одной папке TestMiniApp`);
   console.log(`🔒 Доступ: исключительно через Telegram`);
   console.log(`==========================================`);
 });
