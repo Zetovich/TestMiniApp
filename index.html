@@ -1,0 +1,2366 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0A0B0E">
+<title>Shadow Vault</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+/* ============================== ДИЗАЙН-ТОКЕНЫ ============================= */
+:root{
+  --bg:#0A0B0E;
+  --bg-soft:#101218;
+  --panel:#13161C;
+  --panel-2:#181B23;
+  --panel-3:#1E222B;
+  --line:rgba(200,165,91,.16);
+  --line-soft:rgba(255,255,255,.07);
+  --gold:#C8A55B;
+  --gold-hi:#E7CE8C;
+  --gold-dim:#8C7440;
+  --text:#E9E5DB;
+  --muted:#8B909A;
+  --dim:#5C616B;
+  --danger:#A8413A;
+  --ok:#6C8A54;
+  --fire:#B4552F;
+  --water:#3E6E86;
+  --nature:#5E7A4A;
+  --magic:#6A5B8C;
+  --r-common:#8A8F98;
+  --r-rare:#5E86A8;
+  --r-epic:#8A6FB0;
+  --r-legend:#C8A55B;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --serif:Georgia,'Iowan Old Style','Palatino Linotype','Times New Roman',serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--bg);
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, #161A22 0%, rgba(10,11,14,0) 62%),
+    radial-gradient(80% 50% at 100% 100%, #14171E 0%, rgba(10,11,14,0) 60%);
+  background-attachment:fixed;
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:14px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;
+  user-select:none;
+}
+.hidden{display:none!important}
+button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+img{display:block;-webkit-user-drag:none}
+::-webkit-scrollbar{width:0;height:0}
+
+/* ================================== ГЕЙТ ================================= */
+#gate{
+  position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(100% 70% at 50% 20%, #14171F 0%, #08090C 70%);
+  padding:32px;text-align:center;
+}
+.gate-inner{max-width:320px;animation:fadeIn .5s ease}
+.gate-crest{width:86px;height:86px;margin:0 auto 22px;opacity:.95;filter:drop-shadow(0 6px 22px rgba(200,165,91,.18))}
+.gate-title{
+  font-family:var(--serif);font-size:26px;letter-spacing:.22em;margin:0 0 6px;
+  color:var(--gold-hi);text-transform:uppercase;font-weight:400;
+}
+.gate-rule{width:52px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);margin:16px auto}
+.gate-msg{color:var(--muted);font-size:13px;margin:0;min-height:38px;line-height:1.6}
+.gate-msg b{color:var(--gold);font-weight:500}
+.spinner{
+  width:22px;height:22px;margin:22px auto 0;border-radius:50%;
+  border:1.5px solid rgba(200,165,91,.2);border-top-color:var(--gold);
+  animation:spin .9s linear infinite;
+}
+.gate-diag{
+  margin:20px auto 0;padding:10px 12px;max-width:300px;text-align:left;
+  border-radius:9px;background:rgba(255,255,255,.03);border:1px solid var(--line-soft);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;line-height:1.9;
+  color:var(--dim);letter-spacing:0;word-break:break-word;
+}
+.gate-diag b{color:var(--muted);font-weight:500}
+.gate-retry{margin-top:18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ================================ КАРКАС ================================= */
+.app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;position:relative}
+
+/* ---- HUD ---- */
+.hud{
+  position:sticky;top:0;z-index:40;
+  background:linear-gradient(180deg,rgba(12,13,17,.96),rgba(12,13,17,.88));
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+  padding:10px 14px 9px;
+}
+.hud-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hud-id{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 auto}
+.hud-crest{width:30px;height:30px;flex:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.hud-name{
+  font-family:var(--serif);font-size:14.5px;letter-spacing:.03em;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:124px;
+}
+.hud-sub{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.hud-sub i{width:4px;height:4px;border-radius:50%;background:var(--gold-dim);display:block}
+.hud-rating{color:var(--gold);font-weight:600}
+.res-row{display:flex;align-items:center;gap:4px;flex:none}
+.res{
+  display:flex;align-items:center;gap:4px;padding:4px 7px 4px 5px;border-radius:8px;
+  background:var(--panel-2);border:1px solid var(--line-soft);
+  font-size:11.5px;font-variant-numeric:tabular-nums;letter-spacing:.01em;white-space:nowrap;
+}
+.res img{width:13px;height:13px}
+.res span{color:var(--text)}
+.res.energy span{color:#9CC4D6}
+.hud-energy{position:relative}
+.hud-energy em{
+  font-style:normal;font-size:8.5px;color:var(--dim);margin-left:2px;white-space:nowrap;
+  letter-spacing:.02em;
+}
+
+/* ---- Контент ---- */
+.view{flex:1;padding:16px 14px calc(96px + env(safe-area-inset-bottom,0px));animation:viewIn .28s ease}
+@keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---- Навигация ---- */
+.tabbar{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;max-width:560px;margin:0 auto;
+  display:flex;justify-content:space-around;align-items:stretch;
+  background:linear-gradient(180deg,rgba(13,14,18,.94),#090A0D);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);
+  padding:7px 4px calc(7px + env(safe-area-inset-bottom,0px));
+}
+.tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:5px 2px 3px;border-radius:10px;color:var(--dim);transition:color .18s,background .18s;
+  position:relative;
+}
+.tab svg{width:21px;height:21px;display:block}
+.tab span{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:500}
+.tab.on{color:var(--gold)}
+.tab.on::before{
+  content:'';position:absolute;top:-8px;left:50%;transform:translateX(-50%);
+  width:26px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+.tab:active{background:rgba(200,165,91,.07)}
+
+/* ============================== ТИПОГРАФИКА ============================= */
+.eyebrow{
+  font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
+  margin:0 0 6px;font-weight:600;
+}
+.h1{font-family:var(--serif);font-size:21px;font-weight:400;letter-spacing:.06em;margin:0 0 4px}
+.h2{font-family:var(--serif);font-size:15px;font-weight:400;letter-spacing:.08em;margin:0}
+.sub{color:var(--muted);font-size:12px;margin:0}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:18px 0}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin:22px 0 10px}
+.section-head:first-child{margin-top:0}
+
+/* ================================ КАРТОЧКИ =============================== */
+.card{
+  position:relative;background:linear-gradient(180deg,var(--panel-2),var(--panel));
+  border:1px solid var(--line-soft);border-radius:14px;padding:14px;overflow:hidden;
+}
+.card.gold{border-color:var(--line)}
+.card::after{
+  content:'';position:absolute;top:0;left:14px;right:14px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(200,165,91,.5),transparent);
+}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:11px 16px;border-radius:10px;
+  border:1px solid var(--line);background:linear-gradient(180deg,#1C2028,#14171D);
+  font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text);
+  transition:transform .1s,filter .18s,border-color .18s;
+}
+.btn:active{transform:scale(.975)}
+.btn.solid{
+  background:linear-gradient(180deg,var(--gold-hi),var(--gold));
+  color:#191400;border-color:#E7CE8C;
+  box-shadow:0 6px 18px -8px rgba(200,165,91,.7);
+}
+.btn.danger{color:#E8B4AF;border-color:rgba(168,65,58,.55);background:linear-gradient(180deg,#26171A,#1A1215)}
+.btn.ghost{background:transparent;border-color:var(--line-soft);color:var(--muted)}
+.btn.small{padding:7px 11px;font-size:10.5px;letter-spacing:.08em;border-radius:8px}
+.btn.full{width:100%}
+.btn:disabled{opacity:.38;filter:grayscale(.4)}
+.btn .cd{
+  position:absolute;inset:0;border-radius:inherit;background:rgba(8,9,12,.72);
+  display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--gold)
+}
+
+/* ============================== КАМПАНИЯ ================================= */
+.stage{
+  display:flex;align-items:center;gap:12px;padding:12px;
+  background:linear-gradient(180deg,var(--panel-2),var(--panel));
+  border:1px solid var(--line-soft);border-radius:12px;margin-bottom:8px;
+  transition:border-color .18s;
+}
+.stage.locked{opacity:.45}
+.stage.cleared{border-color:rgba(200,165,91,.28)}
+.stage-num{
+  width:38px;height:38px;flex:none;border-radius:9px;display:grid;place-items:center;
+  background:var(--panel-3);border:1px solid var(--line);
+  font-family:var(--serif);font-size:15px;color:var(--gold);
+}
+.stage-info{flex:1;min-width:0}
+.stage-name{font-size:12.5px;font-weight:600;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage-meta{
+  font-size:10px;color:var(--dim);letter-spacing:.03em;margin-top:3px;
+  display:flex;gap:6px;align-items:center;white-space:nowrap;overflow:hidden;
+}
+.stage-meta .dot{opacity:.45}
+.stage-ico{width:11px;height:11px;vertical-align:-2px;opacity:.8}
+.foes{display:flex;gap:1px;align-items:center;flex:none;height:22px}
+.foes img{width:15px;height:20px;object-fit:contain;opacity:.8;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.stage .btn{flex:none}
+.stage .btn.icon{padding:8px 9px}
+
+/* ================================ ГЕРОИ ================================== */
+.hero-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.hero-grid.two{grid-template-columns:repeat(2,1fr)}
+.hcard{
+  position:relative;border-radius:12px;overflow:hidden;padding:0;text-align:left;
+  background:linear-gradient(180deg,#191D25,#0F1116);
+  border:1px solid var(--line-soft);
+  transition:transform .12s,border-color .2s;
+}
+.hcard:active{transform:scale(.972)}
+.hcard .frame{position:absolute;inset:0;border-radius:12px;pointer-events:none;border:1px solid transparent}
+.hcard[data-stars="1"] .frame,.hcard[data-stars="2"] .frame{border-color:rgba(138,143,152,.5)}
+.hcard[data-stars="3"] .frame{border-color:rgba(94,134,168,.55)}
+.hcard[data-stars="4"] .frame{border-color:rgba(138,111,176,.6)}
+.hcard[data-stars="5"] .frame{border-color:rgba(200,165,91,.65);box-shadow:inset 0 0 22px -8px rgba(200,165,91,.65)}
+.hcard[data-stars="6"] .frame{border-color:var(--gold-hi);box-shadow:inset 0 0 26px -6px rgba(231,206,140,.8)}
+.hcard-art{
+  position:relative;aspect-ratio:1/1.16;display:flex;align-items:flex-end;justify-content:center;
+  overflow:hidden;
+}
+.hcard-art::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(70% 60% at 50% 78%, var(--aff-soft, rgba(200,165,91,.14)) 0%, transparent 70%);
+}
+.hcard-art img{
+  position:relative;width:96%;height:100%;object-fit:contain;object-position:bottom center;
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.65));
+}
+.hcard-meta{padding:6px 8px 8px;background:linear-gradient(180deg,rgba(10,11,14,0),rgba(10,11,14,.9) 40%)}
+.hcard-name{font-size:11.5px;font-weight:600;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hcard-line{display:flex;align-items:center;justify-content:space-between;margin-top:1px}
+.stars{font-size:9px;letter-spacing:.06em;color:var(--gold-dim)}
+.stars b{color:var(--gold);font-weight:400}
+.hcard-lvl{font-size:9.5px;color:var(--dim);letter-spacing:.04em}
+.hcard-power{
+  position:absolute;top:6px;right:6px;font-size:9px;letter-spacing:.04em;color:var(--gold-hi);
+  background:rgba(8,9,12,.66);border:1px solid rgba(200,165,91,.22);border-radius:5px;padding:1px 4px;
+  font-variant-numeric:tabular-nums;
+}
+.hcard-inteam{
+  position:absolute;top:6px;left:6px;width:15px;height:15px;border-radius:50%;overflow:hidden;
+  background:var(--gold);display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.6);font-size:0;
+}
+.hcard-inteam::after{content:'';width:6px;height:3px;border-left:1.5px solid #191400;border-bottom:1.5px solid #191400;transform:rotate(-45deg) translate(0.5px,-1px)}
+.hcard.selected{outline:2px solid var(--gold);outline-offset:1px}
+
+/* ============================== ПАНЕЛЬ ГЕРОЯ ============================= */
+.sheet-wrap{position:fixed;inset:0;z-index:120;display:flex;align-items:flex-end;justify-content:center}
+.sheet-bg{position:absolute;inset:0;background:rgba(4,5,7,.72);backdrop-filter:blur(3px);animation:fadeIn .2s}
+.sheet{
+  position:relative;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;
+  background:linear-gradient(180deg,#15181F,#0B0C10);
+  border-top:1px solid var(--line);border-radius:18px 18px 0 0;
+  padding:8px 16px calc(24px + env(safe-area-inset-bottom,0px));
+  animation:sheetUp .3s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes sheetUp{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+.sheet-grip{width:38px;height:3px;border-radius:2px;background:var(--panel-3);margin:6px auto 14px}
+.sheet-head{display:flex;gap:14px;align-items:flex-start}
+.sheet-art{
+  width:108px;height:132px;flex:none;border-radius:12px;position:relative;overflow:hidden;
+  background:radial-gradient(70% 60% at 50% 80%, var(--aff-soft,rgba(200,165,91,.12)), #101318 70%);
+  border:1px solid var(--line);
+}
+.sheet-art img{width:100%;height:100%;object-fit:contain;object-position:bottom}
+.sheet-title{flex:1;min-width:0}
+.sheet-name{font-family:var(--serif);font-size:19px;letter-spacing:.04em;margin:0 0 2px}
+.sheet-sub{font-size:11px;color:var(--muted);letter-spacing:.06em;margin:0 0 8px}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{
+  font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:6px;
+  border:1px solid var(--line-soft);color:var(--muted);background:var(--panel-2);
+}
+.badge.aff{color:var(--aff,#C8A55B);border-color:color-mix(in srgb,var(--aff,#C8A55B) 55%,transparent)}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:14px}
+.stat{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;
+  background:var(--panel);border:1px solid var(--line-soft);
+}
+.stat img{width:15px;height:15px;opacity:.9}
+.stat b{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;margin-left:auto}
+.stat span{font-size:10.5px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.skill{
+  padding:10px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--line-soft);margin-bottom:6px;
+}
+.skill-top{display:flex;align-items:center;gap:8px}
+.skill-name{font-size:12.5px;font-weight:600}
+.skill-cd{font-size:9.5px;color:var(--gold-dim);letter-spacing:.08em;margin-left:auto;text-transform:uppercase}
+.skill-desc{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5}
+
+/* ---- Слоты экипировки ---- */
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.slot{
+  position:relative;aspect-ratio:1/1.14;border-radius:10px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;padding:6px;
+  background:linear-gradient(180deg,#14171D,#0E1014);
+  border:1px dashed rgba(255,255,255,.1);
+}
+.slot.filled{border-style:solid;border-color:var(--rc,rgba(255,255,255,.12));background:linear-gradient(180deg,#191D25,#101318)}
+.slot img{width:30px;height:30px;opacity:.55}
+.slot.filled img{opacity:1}
+.slot-name{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);text-align:center}
+.slot.filled .slot-name{color:var(--rc,var(--muted))}
+.slot-lvl{position:absolute;top:4px;right:5px;font-size:8.5px;color:var(--gold)}
+.slot-empty{font-size:16px;color:var(--panel-3);line-height:1}
+
+/* ---- Инвентарь ---- */
+.item-row{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;
+  background:var(--panel);border:1px solid var(--line-soft);margin-bottom:6px;
+}
+.item-icon{
+  width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:8px;
+  background:#0D0F13;border:1px solid var(--rc,rgba(255,255,255,.1));
+}
+.item-icon img{width:22px;height:22px}
+.item-name{font-size:12px;font-weight:600;color:var(--rc,var(--text))}
+.item-sub{font-size:10px;color:var(--dim);margin-top:1px}
+.item-actions{display:flex;gap:5px;margin-left:auto}
+
+/* ================================ АРЕНА ================================== */
+.opp{
+  display:flex;align-items:center;gap:10px;padding:11px;border-radius:12px;margin-bottom:8px;
+  background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line-soft);
+}
+.opp-rank{
+  width:26px;height:26px;flex:none;border-radius:7px;display:grid;place-items:center;
+  font-family:var(--serif);font-size:12px;color:var(--gold);
+  background:var(--panel-3);border:1px solid var(--line);
+}
+.opp-info{flex:1;min-width:0}
+.opp-name{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opp-meta{font-size:10px;color:var(--dim);letter-spacing:.04em;margin-top:2px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.opp-team{display:flex;gap:-4px;align-items:center}
+.opp-team img{width:24px;height:28px;object-fit:contain;margin-left:-7px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.opp-team img:first-child{margin-left:0}
+.rating-pill{
+  display:flex;flex-direction:column;align-items:flex-end;gap:1px;
+  padding:6px 11px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);
+}
+.rating-pill b{font-family:var(--serif);font-size:16px;color:var(--gold-hi);font-weight:400;letter-spacing:.03em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rating-pill span{font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+
+/* ================================ БОСС =================================== */
+.boss-hero{
+  position:relative;border-radius:14px;overflow:hidden;padding:0;
+  background:radial-gradient(80% 70% at 50% 90%, rgba(180,85,47,.16), rgba(10,11,14,0) 70%), linear-gradient(180deg,#171A21,#0B0C10);
+  border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;
+}
+.boss-hero img{width:74%;max-height:280px;object-fit:contain;filter:drop-shadow(0 12px 26px rgba(0,0,0,.75))}
+.boss-hp{width:100%;padding:0 14px 14px}
+.hpbar{position:relative;height:10px;border-radius:6px;background:#0A0C10;border:1px solid var(--line-soft);overflow:hidden}
+.hpbar>i{
+  display:block;height:100%;border-radius:6px;
+  background:linear-gradient(90deg,#7E2A28,#C24A3E 60%,#E2715C);
+  transition:width .55s cubic-bezier(.2,.8,.3,1);
+}
+.hpbar>i.gold{background:linear-gradient(90deg,#8C7440,#C8A55B 60%,#E7CE8C)}
+.hp-nums{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:5px;font-variant-numeric:tabular-nums}
+
+/* ================================ БОЙ ==================================== */
+.battle{
+  position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;
+  background:
+    radial-gradient(90% 60% at 20% 10%, rgba(62,110,134,.10), transparent 60%),
+    radial-gradient(90% 60% at 80% 10%, rgba(180,85,47,.10), transparent 60%),
+    linear-gradient(180deg,#0D0F14,#070809);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.battle-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;
+  border-bottom:1px solid var(--line-soft);
+}
+.battle-title{text-align:center;flex:1;min-width:0}
+.battle-title strong{display:block;font-family:var(--serif);font-size:14px;font-weight:400;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.battle-title span{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.field{
+  flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px;
+  padding:14px 10px 78px;overflow-y:auto;position:relative;
+}
+.field::before{
+  content:'';position:absolute;left:6%;right:6%;bottom:8%;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(200,165,91,.16),transparent);
+}
+.field.shake{animation:shake .34s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{
+  10%,90%{transform:translate3d(-1px,0,0)}
+  20%,80%{transform:translate3d(2px,0,0)}
+  30%,50%,70%{transform:translate3d(-3px,0,0)}
+  40%,60%{transform:translate3d(3px,0,0)}
+}
+.col{display:flex;flex-direction:column;gap:9px;width:47%;justify-content:center}
+.col.enemy{align-items:flex-end}
+.combat-log{
+  position:absolute;left:12px;right:12px;bottom:4px;display:flex;flex-direction:column;gap:3px;
+  pointer-events:none;
+}
+.combat-log div{
+  font-size:10.5px;letter-spacing:.02em;color:var(--dim);line-height:1.4;
+  animation:logIn .3s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.combat-log div:first-child{color:var(--muted)}
+.combat-log b{color:var(--text);font-weight:600}
+.combat-log i{font-style:normal;color:var(--gold-dim)}
+.combat-log .num{color:#C4736A;font-variant-numeric:tabular-nums}
+.combat-log .num.good{color:var(--gold-hi)}
+@keyframes logIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.vs-mark{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  font-family:var(--serif);font-size:11px;letter-spacing:.3em;color:rgba(200,165,91,.22);
+  pointer-events:none;
+}
+.unit{
+  position:relative;width:100%;display:flex;gap:8px;padding:7px;border-radius:10px;
+  background:linear-gradient(180deg,rgba(30,34,43,.7),rgba(14,16,21,.85));
+  border:1px solid var(--line-soft);transition:box-shadow .2s,border-color .2s,opacity .4s;
+}
+.col.enemy .unit{flex-direction:row-reverse;text-align:right}
+.unit.active{border-color:rgba(200,165,91,.55);box-shadow:0 0 0 1px rgba(200,165,91,.25),0 0 20px -6px rgba(200,165,91,.5)}
+.unit.dead{opacity:.32;filter:grayscale(.85)}
+.unit.boss .unit-art{width:74px;height:92px}
+.unit.boss{padding:8px;border-color:rgba(180,85,47,.34);box-shadow:inset 0 0 26px -14px rgba(180,85,47,.9)}
+.unit.acted{opacity:.7}
+.unit-art{
+  width:60px;height:74px;flex:none;border-radius:8px;overflow:hidden;position:relative;
+  background:radial-gradient(70% 60% at 50% 80%, var(--aff-soft,rgba(200,165,91,.1)), #0C0E12 72%);
+}
+.unit-art img{width:100%;height:100%;object-fit:contain;object-position:bottom}
+.col.enemy .unit-art img{transform:scaleX(-1)}
+.unit-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.unit-name{font-size:11px;font-weight:600;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-hp{position:relative;height:7px;border-radius:4px;background:#0A0C10;border:1px solid rgba(255,255,255,.06);overflow:hidden}
+.u-hp>i{display:block;height:100%;background:linear-gradient(90deg,#7E2A28,#C24A3E);transition:width .45s cubic-bezier(.2,.8,.3,1)}
+.u-hp>i.enemy{background:linear-gradient(90deg,#8C3A2A,#B4552F)}
+.u-tm{position:relative;height:3px;border-radius:2px;background:rgba(255,255,255,.05);overflow:hidden}
+.u-tm>i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-dim),var(--gold));transition:width .3s linear}
+.u-hp-num{font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.unit.targetable{cursor:pointer}
+.unit.selected{border-color:rgba(226,113,92,.6);box-shadow:0 0 0 1px rgba(226,113,92,.35)}
+.buffs{display:flex;gap:2px;flex-wrap:wrap;min-height:12px}
+.buff{
+  width:14px;height:14px;border-radius:4px;display:grid;place-items:center;font-size:8px;
+  border:1px solid var(--line-soft);background:var(--panel-2);
+}
+.buff.poison{color:#7FA05E;border-color:rgba(127,160,94,.45)}
+.buff.shield{color:#9CC4D6;border-color:rgba(156,196,214,.45)}
+.buff.counter{color:#E0B070;border-color:rgba(224,176,112,.45)}
+.buff.defDown{color:#C4736A;border-color:rgba(196,115,106,.45)}
+.popups{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.popup{
+  position:absolute;left:50%;top:2px;transform:translateX(-50%);
+  font-size:17px;font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 8px rgba(0,0,0,.9);animation:popUp 1s ease-out forwards;white-space:nowrap;
+}
+.popup.crit{font-size:21px;color:#FFE9B0;text-shadow:0 0 14px rgba(255,205,120,.75),0 2px 8px #000}
+.popup.strong{color:#F0D79B}
+.popup.weak{color:#9AA0AA;font-size:13px}
+.popup.normal{color:#F2EEE6}
+.popup.poison{color:#9BC47A;font-size:13px}
+@keyframes popUp{
+  0%{opacity:0;transform:translate(-50%,6px) scale(.8)}
+  18%{opacity:1;transform:translate(-50%,-4px) scale(1.1)}
+  40%{transform:translate(-50%,-10px) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-34px) scale(.95)}
+}
+.battle-foot{
+  border-top:1px solid var(--line-soft);padding:10px 12px 12px;
+  background:linear-gradient(180deg,rgba(13,15,20,.6),rgba(7,8,10,.95));
+}
+.turn-info{
+  display:flex;align-items:center;gap:8px;justify-content:center;
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:9px;
+}
+.turn-info b{color:var(--gold);font-weight:600}
+.skills{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.skill-btn{
+  position:relative;padding:10px 12px;border-radius:11px;text-align:left;overflow:hidden;
+  background:linear-gradient(180deg,#1C2028,#131619);border:1px solid var(--line);
+  transition:transform .1s,opacity .2s;
+}
+.skill-btn:active{transform:scale(.98)}
+.skill-btn .sname{display:block;font-size:11.5px;font-weight:600;letter-spacing:.03em}
+.skill-btn .smeta{display:block;font-size:9.5px;color:var(--dim);letter-spacing:.06em;margin-top:2px}
+.skill-btn.ready{border-color:rgba(200,165,91,.45)}
+.skill-btn.disabled{opacity:.42}
+.skill-btn .cdmask{
+  position:absolute;inset:0;display:grid;place-items:center;
+  background:rgba(6,7,9,.7);font-family:var(--serif);font-size:18px;color:var(--gold);
+}
+.skill-banner{
+  position:absolute;left:0;right:0;top:28%;text-align:center;pointer-events:none;z-index:5;
+  font-family:var(--serif);font-size:17px;letter-spacing:.14em;color:var(--gold-hi);
+  text-shadow:0 4px 22px rgba(0,0,0,.9);animation:bannerIn .7s ease forwards;
+}
+@keyframes bannerIn{
+  0%{opacity:0;transform:scale(.92)}
+  20%{opacity:1;transform:scale(1)}
+  75%{opacity:1}
+  100%{opacity:0;transform:scale(1.04)}
+}
+
+/* ---- Итог боя ---- */
+.result{
+  position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+  background:rgba(5,6,8,.82);backdrop-filter:blur(6px);animation:fadeIn .3s;padding:24px;
+}
+.result-card{
+  width:100%;max-width:340px;text-align:center;padding:26px 20px 20px;border-radius:16px;
+  background:linear-gradient(180deg,#171B22,#0C0E12);border:1px solid var(--line);
+  animation:sheetUp .35s cubic-bezier(.2,.8,.3,1);
+}
+.result-title{font-family:var(--serif);font-size:24px;letter-spacing:.14em;margin:0 0 4px;text-transform:uppercase}
+.result-title.win{color:var(--gold-hi);text-shadow:0 0 30px rgba(200,165,91,.4)}
+.result-title.lose{color:#C4736A}
+.result-sub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:18px}
+.reward-row{
+  display:flex;align-items:center;justify-content:center;gap:16px;padding:12px;border-radius:10px;
+  background:rgba(255,255,255,.03);border:1px solid var(--line-soft);margin-bottom:16px;flex-wrap:wrap;
+}
+.reward{display:flex;align-items:center;gap:5px;font-size:13px;font-variant-numeric:tabular-nums}
+.reward img{width:16px;height:16px}
+.reward.gold{color:var(--gold-hi)}
+.reward.star{color:var(--gold)}
+.reward.xp{color:#9CC4D6}
+
+/* =============================== АДМИНКА ================================= */
+.field-label{display:block;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 5px}
+.input{
+  width:100%;padding:11px 12px;border-radius:10px;font-size:13px;font-family:inherit;
+  background:#0C0E12;border:1px solid var(--line-soft);color:var(--text);
+  outline:none;transition:border-color .18s;
+}
+.input:focus{border-color:rgba(200,165,91,.5)}
+.input::placeholder{color:#4B5058}
+select.input{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--gold-dim) 50%),linear-gradient(135deg,var(--gold-dim) 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.form-row{margin-bottom:10px}
+.admin-user{
+  padding:12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);
+  margin:12px 0;
+}
+.admin-user .au-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.au-avatar{
+  width:38px;height:38px;border-radius:9px;display:grid;place-items:center;flex:none;
+  background:linear-gradient(180deg,#20242D,#141720);border:1px solid var(--line);
+  font-family:var(--serif);color:var(--gold);font-size:15px;
+}
+.au-name{font-size:13px;font-weight:600}
+.au-id{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums}
+.au-res{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.au-res>div{text-align:center;padding:7px 3px;border-radius:8px;background:#0D0F13;border:1px solid var(--line-soft)}
+.au-res b{display:block;font-size:12.5px;font-variant-numeric:tabular-nums}
+.au-res span{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.section-title{
+  display:flex;align-items:center;gap:8px;margin:20px 0 10px;
+  font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-dim);
+}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(200,165,91,.25),transparent)}
+
+/* ================================ ТОСТЫ ================================== */
+.toasts{
+  position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);
+  z-index:900;display:flex;flex-direction:column;gap:6px;width:calc(100% - 32px);max-width:340px;
+  pointer-events:none;
+}
+.toast{
+  padding:10px 13px;border-radius:10px;font-size:12.5px;line-height:1.4;
+  background:linear-gradient(180deg,#1B1F27,#12151A);border:1px solid var(--line);
+  box-shadow:0 12px 30px -12px rgba(0,0,0,.9);
+  animation:toastIn .28s cubic-bezier(.2,.8,.3,1);
+  display:flex;align-items:center;gap:9px;
+}
+.toast::before{content:'';width:3px;align-self:stretch;border-radius:2px;background:var(--gold);flex:none}
+.toast.ok::before{background:var(--ok)}
+.toast.err::before{background:var(--danger)}
+.toast.gold::before{background:var(--gold-hi)}
+.toast.out{animation:toastOut .25s forwards}
+@keyframes toastIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateY(-8px)}}
+
+/* ---- Загрузка ---- */
+.skeleton{
+  height:64px;border-radius:12px;margin-bottom:8px;
+  background:linear-gradient(100deg,#12151A 30%,#191D25 50%,#12151A 70%);
+  background-size:220% 100%;animation:shimmer 1.3s infinite linear;
+}
+@keyframes shimmer{from{background-position:120% 0}to{background-position:-20% 0}}
+.empty{
+  text-align:center;padding:36px 16px;color:var(--dim);font-size:12px;letter-spacing:.04em;
+}
+.empty b{display:block;font-family:var(--serif);font-size:16px;color:var(--muted);margin-bottom:6px;font-weight:400;letter-spacing:.06em}
+.ico{width:12px;height:12px;display:inline-block;vertical-align:-2px;opacity:.9}
+.ico.gold{opacity:1}
+.lock{width:12px;height:12px;opacity:.6}
+.rating-line{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- ================================ ГЕЙТ ================================= -->
+<div id="gate">
+  <div class="gate-inner">
+    <img class="gate-crest" src="images/ui/icon_crest.svg" alt="">
+    <h1 class="gate-title">Shadow Vault</h1>
+    <div class="gate-rule"></div>
+    <p class="gate-msg" id="gateMsg">Проверяем аккаунт Telegram…</p>
+    <div class="spinner" id="gateSpin"></div>
+    <div class="gate-diag hidden" id="gateDiag"></div>
+    <button class="btn small hidden gate-retry" id="gateRetry">Повторить</button>
+  </div>
+</div>
+
+<!-- ================================= ИГРА ================================ -->
+<div class="app hidden" id="app">
+  <header class="hud">
+    <div class="hud-row">
+      <div class="hud-id">
+        <img class="hud-crest" src="images/ui/icon_crest.svg" alt="">
+        <div style="min-width:0">
+          <div class="hud-name" id="hudName">—</div>
+          <div class="hud-sub"><span class="hud-rating" id="hudRating">0</span><i></i><span id="hudPower">0 силы</span></div>
+        </div>
+      </div>
+      <div class="res-row">
+        <div class="res" id="resGold"><img src="images/ui/icon_gold.svg" alt=""><span>0</span></div>
+        <div class="res" id="resStar"><img src="images/ui/icon_star.svg" alt=""><span>0</span></div>
+        <div class="res hud-energy" id="resEnergy"><img src="images/ui/icon_energy.svg" alt=""><span>0/50</span><em id="energyTimer"></em></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="view" id="view"></main>
+
+  <nav class="tabbar" id="tabbar"></nav>
+</div>
+
+<!-- =============================== БОЙ =================================== -->
+<section class="battle hidden" id="battle">
+  <div class="battle-head">
+    <button class="btn small ghost" id="btnFlee">Выйти</button>
+    <div class="battle-title"><strong id="battleName">Бой</strong><span id="battleTurn">ход 1</span></div>
+    <button class="btn small ghost" id="btnAuto">Авто</button>
+  </div>
+  <div class="field" id="field">
+    <div class="col player" id="colPlayer"></div>
+    <div class="vs-mark">VS</div>
+    <div class="col enemy" id="colEnemy"></div>
+    <div class="combat-log" id="combatLog"></div>
+  </div>
+  <div class="battle-foot">
+    <div class="turn-info" id="turnInfo">Ожидание</div>
+    <div class="skills" id="skills"></div>
+  </div>
+  <div class="result hidden" id="result"></div>
+</section>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ==========================================================================
+   0. ГЕЙТ: игра запускается ТОЛЬКО внутри Telegram
+   ========================================================================== */
+const gateEl = document.getElementById('gate');
+const gateMsg = document.getElementById('gateMsg');
+const gateSpin = document.getElementById('gateSpin');
+const appEl = document.getElementById('app');
+
+function hardStop(html, opts = {}) {
+  gateMsg.innerHTML = html;
+  gateSpin.classList.add('hidden');
+  if (appEl && appEl.parentNode) appEl.remove();
+  document.documentElement.style.overflow = 'hidden';
+
+  const diag = document.getElementById('gateDiag');
+  if (diag && opts.lines && opts.lines.length) {
+    diag.classList.remove('hidden');
+    diag.innerHTML = opts.lines.map((l) => `<div>${esc(l)}</div>`).join('');
+  }
+  const retry = document.getElementById('gateRetry');
+  if (retry && opts.retry) {
+    retry.classList.remove('hidden');
+    retry.onclick = () => location.reload();
+  }
+  if (opts.console) console.error('[ShadowVault]', opts.console);
+}
+
+const tg = window.Telegram && window.Telegram.WebApp;
+let initData = (tg && tg.initData) ? tg.initData : '';
+
+if (!tg) {
+  hardStop('<b>Игра не запущена.</b><br>Откройте её через Telegram-бота — вне Telegram вход невозможен.');
+  return;
+}
+/* Некоторые клиенты отдают initData с задержкой — ждём в самом конце, перед запуском. */
+
+try {
+  tg.ready();
+  tg.expand();
+  if (tg.setHeaderColor) tg.setHeaderColor('#0A0B0E');
+  if (tg.setBackgroundColor) tg.setBackgroundColor('#0A0B0E');
+  if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+} catch (e) { /* старые версии WebApp */ }
+
+const tgUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) || null;
+
+/* ==========================================================================
+   1. УТИЛИТЫ
+   ========================================================================== */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const el = (tag, cls, html) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html != null) n.innerHTML = html;
+  return n;
+};
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = (n) => Math.round(Number(n) || 0).toLocaleString('ru-RU');
+const pct = (n) => Math.max(0, Math.min(100, Number(n) || 0));
+
+const AFF_HOST = {      // фон-подсветка под портретом
+  fire: 'rgba(180,85,47,.20)',
+  water: 'rgba(62,110,134,.20)',
+  nature: 'rgba(94,122,74,.20)',
+  magic: 'rgba(106,91,140,.20)',
+};
+const AFF_COLOR = { fire: 'var(--fire)', water: 'var(--water)', nature: 'var(--nature)', magic: 'var(--magic)' };
+const AFF_RU = { fire: 'Огонь', water: 'Вода', nature: 'Природа', magic: 'Магия' };
+const SLOT_RU = { weapon: 'Оружие', helmet: 'Шлем', shield: 'Щит', gloves: 'Перчатки', chest: 'Нагрудник', boots: 'Сапоги' };
+const RARITY_RU = { common: 'Обычный', rare: 'Редкий', epic: 'Эпический', legendary: 'Легендарный' };
+const RARITY_COLOR = { common: 'var(--r-common)', rare: 'var(--r-rare)', epic: 'var(--r-epic)', legendary: 'var(--r-legend)' };
+const STAT_RU = { hp: 'HP', atk: 'Атака', def: 'Защита', speed: 'Скорость', crit: 'Крит', critDmg: 'Урон крита' };
+const STAT_ICON = {
+  hp: 'images/ui/stat_hp.svg', atk: 'images/ui/stat_attack.svg', def: 'images/ui/stat_defense.svg',
+  speed: 'images/ui/stat_speed.svg', crit: 'images/ui/stat_crit.svg', critDmg: 'images/ui/stat_crit.svg',
+};
+const CLASS_RU = { warrior: 'Воин', mage: 'Маг', assassin: 'Ассасин', monster: 'Монстр' };
+const BUFF_ICON = { poison: 'Я', shield: 'Щ', counter: 'К', defDown: '↓' };
+const ICO = {
+  gold: '<img class="ico" src="images/ui/icon_gold.svg" alt="">',
+  star: '<img class="ico" src="images/ui/icon_star.svg" alt="">',
+  energy: '<img class="ico" src="images/ui/icon_energy.svg" alt="">',
+  lock: '<svg class="lock" viewBox="0 0 24 24" fill="none"><rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 118 0v3" stroke="currentColor" stroke-width="1.6"/></svg>',
+};
+
+function starsHtml(n) {
+  const k = Math.max(0, Math.min(6, Number(n) || 0));
+  return '<b>' + '★'.repeat(k) + '</b>';
+}
+
+/* ---- Тост: единственный способ показать сообщение (никаких alert) ---- */
+function showToast(text, type = 'info', ms = 2600) {
+  const host = $('#toasts');
+  if (!host) return;
+  const t = el('div', `toast ${type}`, `<span>${esc(text)}</span>`);
+  host.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('out');
+    setTimeout(() => t.remove(), 260);
+  }, ms);
+}
+window.showToast = showToast;
+
+/* ==========================================================================
+   2. СОСТОЯНИЕ
+   ========================================================================== */
+const S = {
+  user: null,
+  campaign: [],
+  boss: null,
+  data: null,
+  tab: 'city',
+  socket: null,
+  battle: null,            // { id, mode, state, live }
+  selectedTarget: null,
+  speed: 1,
+  fuseMode: false,
+  fusePicked: [],
+  openHeroUid: null,
+  adminTarget: null,
+  energyLeft: 0,
+};
+
+/* ==========================================================================
+   3. СЕТЬ: REST + SOCKET
+   ========================================================================== */
+function headers(extra) {
+  return Object.assign({
+    'content-type': 'application/json',
+    'x-init-data': initData,
+    'x-dev-id': String((tgUser && tgUser.id) || ''),
+  }, extra || {});
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    method: opts.method || 'GET',
+    headers: headers(),
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = { ok: false, error: 'BAD_RESPONSE' }; }
+
+  if (res.status === 403 && data.error === 'BANNED') {
+    showBlocked(data.message || 'Аккаунт заблокирован');
+    throw new Error('BANNED');
+  }
+  if (res.status === 401) {
+    await showAuthFailure(data);
+    throw new Error('AUTH');
+  }
+  return data;
+}
+
+const AUTH_HINTS = {
+  BAD_SIGNATURE: 'Подпись Telegram не совпала с токеном бота на сервере.',
+  NO_INIT_DATA: 'Telegram не передал данные авторизации.',
+  NO_HASH: 'В данных Telegram нет подписи — клиент слишком старый.',
+  INIT_DATA_EXPIRED: 'Сессия Telegram устарела.',
+  BOT_TOKEN_MISSING: 'На сервере не задан TELEGRAM_BOT_TOKEN.',
+  NO_USER: 'В данных Telegram нет пользователя.',
+  BAD_USER_JSON: 'Не удалось прочитать данные пользователя.',
+};
+
+async function showAuthFailure(apiData) {
+  let diag = null;
+  try {
+    const r = await fetch('/api/diag', { method: 'POST', headers: headers() });
+    diag = await r.json();
+  } catch (e) { /* сервер мог не ответить — покажем что есть */ }
+
+  const code = (apiData && apiData.code) || (diag && diag.code) || 'AUTH_FAILED';
+  const lines = [`код: ${code}`];
+  if (diag) {
+    lines.push(
+      diag.mode === 'signed'
+        ? `сервер: подпись проверяется (токен …${diag.tokenTail || '????'})`
+        : 'сервер: подпись НЕ проверяется (токен не задан)'
+    );
+    lines.push(
+      diag.initDataLength
+        ? `initData: ${diag.initDataLength} симв.${diag.hasSignatureField ? ', есть signature' : ''}`
+        : 'initData: пусто'
+    );
+  }
+  lines.push(`node env: ${(diag && diag.nodeEnv) || '—'}`);
+
+  hardStop(
+    `<b>Не удалось подтвердить аккаунт.</b><br>${AUTH_HINTS[code] || (apiData && apiData.message) || 'Неизвестная ошибка авторизации.'}`,
+    { lines, retry: true, console: { code, diag, apiData } }
+  );
+}
+
+function showBlocked(reason) {
+  document.getElementById('app') && document.getElementById('app').remove();
+  gateEl.classList.remove('hidden');
+  hardStop('<b>Доступ закрыт.</b><br>' + esc(reason));
+}
+
+function connectSocket() {
+  return new Promise((resolve, reject) => {
+    if (typeof window.io !== 'function') return reject(new Error('NO_IO'));
+    /* io подключается с теми же данными, что и REST */
+    const s = window.io({ auth: { initData, devId: String((tgUser && tgUser.id) || '') } });
+    s.on('connect', () => resolve(s));
+    s.on('connect_error', (e) => reject(e));
+  });
+}
+
+/* ==========================================================================
+   4. ОБЩИЕ КОМПОНЕНТЫ
+   ========================================================================== */
+function renderHud() {
+  const u = S.user;
+  if (!u) return;
+  $('#hudName').textContent = u.name || 'Игрок';
+  $('#hudRating').textContent = num(u.rating);
+  $('#hudPower').textContent = num(u.power);
+  $('#resGold span').textContent = num(u.gold);
+  $('#resStar span').textContent = num(u.stars);
+  $('#resEnergy span').textContent = `${u.energy}/${u.maxEnergy}`;
+  S.energyLeft = Math.round((u.energyNextIn || 0) / 1000);
+  tickEnergy();
+}
+
+function tickEnergy() {
+  const em = $('#energyTimer');
+  if (!em) return;
+  const u = S.user;
+  if (!u) return;
+  if (u.energy >= u.maxEnergy) {
+    em.textContent = '';
+    clearInterval(tickEnergy._t);
+    return;
+  }
+  const left = Math.max(0, S.energyLeft);
+  const m = Math.floor(left / 60);
+  const sec = String(left % 60).padStart(2, '0');
+  em.textContent = `+1 · ${m}:${sec}`;
+  if (!tickEnergy._t) {
+    tickEnergy._t = setInterval(() => {
+      if (!S.user) return;
+      if (S.user.energy >= S.user.maxEnergy) { clearInterval(tickEnergy._t); tickEnergy._t = null; tickEnergy(); return; }
+      S.energyLeft -= 1;
+      if (S.energyLeft <= 0) {
+        S.user.energy = Math.min(S.user.maxEnergy, S.user.energy + 1);
+        S.energyLeft = 300;
+        $('#resEnergy span').textContent = `${S.user.energy}/${S.user.maxEnergy}`;
+      }
+      tickEnergy();
+    }, 1000);
+  }
+}
+
+const TABS = [
+  { id: 'city', label: 'Город', icon: '<path d="M4 21V9l8-5 8 5v12M9 21v-6h6v6" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>' },
+  { id: 'campaign', label: 'Кампания', icon: '<path d="M4 20V7l8 4 8-4v13M4 20h16" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/><circle cx="12" cy="6" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/>' },
+  { id: 'arena', label: 'Арена', icon: '<path d="M5 4l7 7-2 2-7-7zM19 20l-7-7 2-2 7 7zM5 20l5-5M19 4l-5 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>' },
+  { id: 'heroes', label: 'Герои', icon: '<circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>' },
+];
+
+function renderTabs() {
+  const bar = $('#tabbar');
+  const items = [...TABS];
+  if (S.user && S.user.isAdmin) {
+    items.push({
+      id: 'admin', label: 'Админка',
+      icon: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/><path d="M12 8v6M9 11h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+    });
+  }
+  bar.innerHTML = items.map((t) => `
+    <button class="tab ${S.tab === t.id ? 'on' : ''}" data-tab="${t.id}">
+      <svg viewBox="0 0 24 24" fill="none">${t.icon}</svg>
+      <span>${t.label}</span>
+    </button>`).join('');
+  $$('.tab', bar).forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
+}
+
+function go(tab) {
+  if (S.tab === tab && tab !== 'city') { /* всё равно перерисуем */ }
+  S.tab = tab;
+  S.fuseMode = false;
+  S.fusePicked = [];
+  renderTabs();
+  renderView();
+  $('#view').scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+
+function renderView() {
+  const v = $('#view');
+  v.innerHTML = '';
+  switch (S.tab) {
+    case 'city': return renderCity(v);
+    case 'campaign': return renderCampaign(v);
+    case 'arena': return renderArena(v);
+    case 'heroes': return renderHeroes(v);
+    case 'boss': return renderBoss(v);
+    case 'admin': return renderAdmin(v);
+  }
+}
+
+/* Мини-карточка героя для сетки */
+function heroCard(h, opts = {}) {
+  const aff = h.affinity;
+  const inTeam = (S.user.team || []).includes(h.uid);
+  return `
+    <button class="hcard ${opts.selected ? 'selected' : ''}" data-hero="${h.uid}" data-stars="${h.stars}"
+            style="--aff-soft:${AFF_HOST[aff] || AFF_HOST.magic}">
+      <div class="frame"></div>
+      ${inTeam ? '<div class="hcard-inteam" title="В команде"></div>' : ''}
+      <div class="hcard-power">${num(h.power)}</div>
+      <div class="hcard-art"><img src="${h.img}" alt="${esc(h.name)}" loading="lazy"></div>
+      <div class="hcard-meta">
+        <div class="hcard-name">${esc(h.name)}</div>
+        <div class="hcard-line">
+          <div class="stars">${starsHtml(h.stars)}</div>
+          <div class="hcard-lvl">ур.${h.level}</div>
+        </div>
+      </div>
+    </button>`;
+}
+
+/* ==========================================================================
+   5. ЭКРАНЫ
+   ========================================================================== */
+
+/* ------------------------------- ГОРОД ---------------------------------- */
+function renderCity(v) {
+  const u = S.user;
+  const cleared = u.campaignCleared || 0;
+  const boss = S.boss || {};
+  const bossPct = boss.maxHp ? pct((boss.hp / boss.maxHp) * 100) : 0;
+  const team = (u.team || []).map((uid) => u.heroes.find((h) => h.uid === uid)).filter(Boolean);
+
+  v.innerHTML = `
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Цитадель</p>
+        <h2 class="h1">Город</h2>
+      </div>
+      <div class="sub" style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)">
+        ${new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: 'long' })}
+      </div>
+    </div>
+
+    <div class="card gold" style="padding:0;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:14px;padding:16px">
+        <img src="images/ui/icon_crest.svg" style="width:52px;height:52px;filter:drop-shadow(0 6px 16px rgba(200,165,91,.25))" alt="">
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--serif);font-size:16px;letter-spacing:.14em;text-transform:uppercase">Отряд</div>
+          <div class="sub" style="margin-top:2px">Сила ${num(u.power)} · ${team.length} бойца</div>
+        </div>
+        <button class="btn small" data-goto="heroes">Изменить</button>
+      </div>
+      <div style="display:flex;justify-content:center;gap:-8px;padding:0 8px 6px">
+        ${team.length
+          ? team.slice(0, 4).map((h) => `
+            <div style="width:23%;position:relative">
+              <div class="hcard-art" style="aspect-ratio:1/1.02;background:radial-gradient(70% 60% at 50% 80%,${AFF_HOST[h.affinity]},transparent 70%)">
+                <img src="${h.img}" alt="${esc(h.name)}">
+              </div>
+              <div style="font-size:9.5px;text-align:center;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.name)}</div>
+            </div>`).join('')
+          : `<div class="empty" style="padding:20px">Команда не собрана</div>`}
+      </div>
+    </div>
+
+    <div class="section-head"><h3 class="h2">Режимы</h3></div>
+    <div class="card" style="margin-bottom:9px;display:flex;align-items:center;gap:12px">
+      <div style="width:38px;height:38px;flex:none;border-radius:9px;display:grid;place-items:center;background:var(--panel-3);border:1px solid var(--line)">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 20V7l8 4 8-4v13" stroke="var(--gold)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="6" r="2" stroke="var(--gold)" stroke-width="1.5"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">Кампания</div>
+        <div class="sub" style="font-size:11px">Пройдено ${cleared} из ${S.campaign.length || 12}</div>
+      </div>
+      <button class="btn small" data-goto="campaign">Войти</button>
+    </div>
+
+    <div class="card" style="margin-bottom:9px;display:flex;align-items:center;gap:12px">
+      <div style="width:38px;height:38px;flex:none;border-radius:9px;display:grid;place-items:center;background:var(--panel-3);border:1px solid var(--line)">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 4l7 7-2 2-7-7zM19 20l-7-7 2-2 7 7z" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">Арена</div>
+        <div class="sub" style="font-size:11px">Рейтинг ${num(u.rating)} · ${u.wins}П / ${u.losses}Пр</div>
+      </div>
+      <button class="btn small" data-goto="arena">Бой</button>
+    </div>
+
+    <div class="card" style="margin-bottom:9px;padding:0;overflow:hidden">
+      <button data-goto="boss" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px;text-align:left">
+        <img src="${boss.img || 'images/monsters/boss_obsidian.png'}" style="width:42px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.7))" alt="">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">Рейд-босс</div>
+          <div class="sub" style="font-size:11px">${boss.attemptsLeft != null ? `${boss.attemptsLeft} попытки сегодня` : 'Ежедневный рейд'}</div>
+          <div class="hpbar" style="height:5px;margin-top:6px"><i style="width:${bossPct}%"></i></div>
+        </div>
+        <span class="btn small">Атака</span>
+      </button>
+    </div>
+
+    <div class="section-head"><h3 class="h2">Ресурсы</h3></div>
+    <div class="form-grid" style="gap:8px">
+      <div class="card" style="padding:12px">
+        <div class="eyebrow" style="margin-bottom:8px">Призыв героя</div>
+        <div class="sub" style="font-size:11px;margin-bottom:10px">${ICO.star} 100 · герой 3–5★</div>
+        <button class="btn small full solid" id="btnSummon" ${u.stars < 100 ? 'disabled' : ''}>Призвать</button>
+      </div>
+      <div class="card" style="padding:12px">
+        <div class="eyebrow" style="margin-bottom:8px">Энергия</div>
+        <div class="sub" style="font-size:11px;margin-bottom:10px">${ICO.star} 20 · +50 энергии</div>
+        <button class="btn small full" id="btnRefill" ${u.stars < 20 || u.energy >= u.maxEnergy ? 'disabled' : ''}>Восполнить</button>
+      </div>
+    </div>
+  `;
+
+  $$('[data-goto]', v).forEach((b) => b.addEventListener('click', () => go(b.dataset.goto)));
+
+  const sum = $('#btnSummon', v);
+  if (sum) sum.addEventListener('click', doSummon);
+  const ref = $('#btnRefill', v);
+  if (ref) ref.addEventListener('click', doRefill);
+}
+
+async function doSummon() {
+  const r = await api('/api/summon', { method: 'POST', body: {} });
+  if (!r.ok) return showToast(r.message || 'Не удалось призвать', 'err');
+  S.user = r.user;
+  renderHud();
+  showSummonReveal(r.hero);
+}
+
+async function doRefill() {
+  const r = await api('/api/energy/refill', { method: 'POST', body: {} });
+  if (!r.ok) return showToast(r.message || 'Ошибка', 'err');
+  S.user = r.user;
+  renderHud();
+  showToast('Энергия восстановлена', 'ok');
+  renderView();
+}
+
+function showSummonReveal(hero) {
+  const wrap = el('div', 'sheet-wrap');
+  wrap.innerHTML = `
+    <div class="sheet-bg"></div>
+    <div class="sheet" style="text-align:center">
+      <div class="sheet-grip"></div>
+      <p class="eyebrow">Из сумрака выходит</p>
+      <div class="hcard-art" style="height:230px;aspect-ratio:auto;background:radial-gradient(60% 60% at 50% 80%,${AFF_HOST[hero.affinity]},transparent 70%)">
+        <img src="${hero.img}" alt="" style="width:auto;max-height:100%">
+      </div>
+      <h2 class="h1" style="margin-top:8px">${esc(hero.name)}</h2>
+      <p class="sub" style="margin-bottom:6px">${esc(hero.title)} · ${CLASS_RU[hero.className] || ''} · ${AFF_RU[hero.affinity] || ''}</p>
+      <div class="stars" style="font-size:13px;margin-bottom:16px">${starsHtml(hero.stars)}</div>
+      <button class="btn full solid" id="closeReveal" style="position:static">Принять</button>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#closeReveal').addEventListener('click', () => {
+    wrap.remove();
+    go('heroes');
+  });
+}
+
+/* ------------------------------ КАМПАНИЯ -------------------------------- */
+function renderCampaign(v) {
+  const stages = S.campaign;
+  v.innerHTML = `
+    <div class="section-head">
+      <div><p class="eyebrow">PvE</p><h2 class="h1">Кампания</h2></div>
+      <div class="sub" style="font-size:11px;color:var(--dim)">${ICO.energy} ${S.user.energy}/${S.user.maxEnergy}</div>
+    </div>
+    <div id="stageList">
+      ${stages.map((s) => {
+        const foes = (s.enemies || []).map((e) => {
+          const img = e.key === 'minion_husk' ? 'images/monsters/minion_husk.png'
+            : e.key === 'minion_stalker' ? 'images/monsters/minion_stalker.png'
+            : 'images/monsters/boss_obsidian.png';
+          return `<img src="${img}" alt="">`;
+        }).join('');
+        return `
+          <div class="stage ${s.locked ? 'locked' : ''} ${s.cleared ? 'cleared' : ''}">
+            <div class="stage-num">${s.id}</div>
+            <div class="stage-info">
+              <div class="stage-name">${esc(s.name)}</div>
+              <div class="stage-meta">
+                <span>${s.locked ? 'Закрыто' : s.cleared ? 'Пройдено' : 'Доступно'}</span>
+                <span class="dot">·</span>
+                <span>${ICO.gold} ${num(s.rewards.gold)}</span>
+                <span class="dot">·</span>
+                <span>${ICO.energy} ${s.energy}</span>
+              </div>
+            </div>
+            <div class="foes">${foes}</div>
+            <button class="btn small ${s.locked ? 'icon ghost' : 'solid'}" data-stage="${s.id}" ${s.locked ? 'disabled' : ''}>
+              ${s.locked ? ICO.lock : 'В бой'}
+            </button>
+          </div>`;
+      }).join('')}
+    </div>`;
+
+  $$('[data-stage]', v).forEach((b) => {
+    b.addEventListener('click', () => {
+      if (S.user.energy < 6) return showToast('Не хватает энергии', 'err');
+      startLiveBattle('campaign', Number(b.dataset.stage));
+    });
+  });
+}
+
+/* -------------------------------- АРЕНА --------------------------------- */
+async function renderArena(v) {
+  v.innerHTML = `
+    <div class="section-head">
+      <div><p class="eyebrow">PvP</p><h2 class="h1">Арена</h2></div>
+      <div class="rating-pill"><b>${num(S.user.rating)}</b><span>рейтинг</span></div>
+    </div>
+    <div id="arenaList">
+      ${'<div class="skeleton"></div>'.repeat(5)}
+    </div>`;
+
+  const r = await api('/api/arena');
+  if (!r.ok) {
+    $('#arenaList').innerHTML = `<div class="empty"><b>Арена недоступна</b>${esc(r.message || '')}</div>`;
+    return;
+  }
+  S.arenaOpponents = r.opponents;
+  $('#arenaList').innerHTML = r.opponents.map((o, i) => `
+    <div class="opp">
+      <div class="opp-rank">${i + 1}</div>
+      <div class="opp-info">
+        <div class="opp-name">${esc(o.name)}</div>
+        <div class="opp-meta">
+          <span>${num(o.rating)}</span><span class="dot">·</span><span>${num(o.power)} силы</span>
+          ${o.isBot ? '<span class="dot">·</span><span>бот</span>' : ''}
+        </div>
+      </div>
+      <div class="opp-team">${(o.team || []).slice(0, 4).map((h) => `<img src="${h.img}" alt="">`).join('')}</div>
+      <button class="btn small solid" data-opp="${esc(o.tgId)}">Бой</button>
+    </div>`).join('');
+
+  $$('[data-opp]', v).forEach((b) => b.addEventListener('click', () => fightArena(b.dataset.opp)));
+}
+
+async function fightArena(opponentId) {
+  const opp = (S.arenaOpponents || []).find((o) => String(o.tgId) === String(opponentId));
+  showToast('Бой начался', 'info', 1200);
+
+  const myTeam = (S.user.team || []).map((uid) => S.user.heroes.find((h) => h.uid === uid)).filter(Boolean);
+  if (!myTeam.length) return showToast('Соберите команду', 'err');
+
+  const r = await api('/api/arena/fight', { method: 'POST', body: { opponentId } });
+  if (!r.ok) return showToast(r.message || 'Бой не состоялся', 'err');
+
+  /* Собираем синтетическое состояние из превью команд — события дают всю динамику */
+  const units = [
+    ...myTeam.map((h) => ({
+      uid: h.uid, name: h.name, img: h.img, affinity: h.affinity, side: 'player',
+      hp: h.stats.hp, maxHp: h.stats.hp, tm: 0, alive: true, buffs: [], cd: [0, 0],
+      stars: h.stars, level: h.level, isBoss: false,
+    })),
+    ...(opp.team || []).map((h) => ({
+      uid: h.uid, name: h.name, img: h.img, affinity: h.affinity, side: 'enemy',
+      hp: 1, maxHp: 1, tm: 0, alive: true, buffs: [], cd: [0, 0],
+      stars: h.stars, level: h.level, isBoss: false,
+    })),
+  ];
+  /* Проставляем maxHp врагам из событий (первое попадание содержит maxHp) */
+  for (const ev of r.events) {
+    if (ev.type === 'damage' && ev.maxHp) {
+      const u = units.find((x) => x.uid === ev.target);
+      if (u && u.side === 'enemy' && u.maxHp === 1) { u.maxHp = ev.maxHp; u.hp = ev.maxHp; }
+    }
+  }
+  for (const u of units) if (u.maxHp === 1) { u.maxHp = 1000; u.hp = 1000; }
+
+  openBattle({
+    id: null,
+    mode: 'arena',
+    live: false,
+    title: 'Арена · ' + (opp ? opp.name : 'Соперник'),
+    state: { units, actor: null, turnNo: 0, over: false, result: null },
+    pending: r,
+  });
+  await runArenaPlayback(r, opp);
+}
+
+async function runArenaPlayback(r, opp) {
+  const B = S.battle;
+  B.playing = true;
+  setSkillsEnabled(false);
+  $('#turnInfo').innerHTML = 'Бой идёт…';
+  await playEvents(r.events);
+
+  const win = !!r.win;
+  showResult({
+    win,
+    title: win ? 'Победа' : 'Поражение',
+    sub: opp ? `${opp.name} · рейтинг ${win ? '+' : '−'}${Math.abs(r.ratingDelta)}` : '',
+    rewards: r.rewards || {},
+    ratingDelta: r.ratingDelta,
+  });
+  B.playing = false;
+  await refreshState();
+}
+
+/* -------------------------------- БОСС ---------------------------------- */
+async function renderBoss(v) {
+  const b = S.boss || {};
+  v.innerHTML = `
+    <div class="section-head">
+      <div><p class="eyebrow">Рейд</p><h2 class="h1">Ежедневный босс</h2></div>
+      <div class="sub" style="font-size:10.5px;color:var(--dim)">ур. ${b.level || 1}</div>
+    </div>
+    <div class="boss-hero">
+      <div style="padding-top:14px"><p class="eyebrow" style="text-align:center">${esc(b.name || 'Обсидиановый Владыка')}</p></div>
+      <img src="${b.img || 'images/monsters/boss_obsidian.png'}" alt="">
+      <div class="boss-hp">
+        <div class="hpbar"><i style="width:${b.maxHp ? pct((b.hp / b.maxHp) * 100) : 100}%"></i></div>
+        <div class="hp-nums"><span>${num(b.hp)} HP</span><span>${num(b.maxHp)}</span></div>
+      </div>
+    </div>
+    <div class="form-grid" style="margin-top:12px">
+      <div class="card" style="padding:12px;text-align:center">
+        <div class="eyebrow">Попытки</div>
+        <div style="font-family:var(--serif);font-size:22px;color:var(--gold-hi)">${b.attemptsLeft ?? 0}</div>
+      </div>
+      <div class="card" style="padding:12px;text-align:center">
+        <div class="eyebrow">Ваш урон</div>
+        <div style="font-family:var(--serif);font-size:22px;color:var(--gold-hi)">${num(b.myDamage || 0)}</div>
+      </div>
+    </div>
+    <button class="btn full solid" id="btnBoss" style="margin-top:12px" ${(b.attemptsLeft || 0) <= 0 || (b.hp || 0) <= 0 ? 'disabled' : ''}>
+      ${(b.hp || 0) <= 0 ? 'Босс повержен' : 'Атаковать'}
+    </button>
+    <div class="section-head"><h3 class="h2">Вклад игроков</h3></div>
+    <div id="bossTop">
+      ${(b.top && b.top.length)
+        ? b.top.map((t, i) => `<div class="item-row"><div class="opp-rank">${i + 1}</div><div class="opp-info"><div class="opp-name">ID ${esc(t.tgId)}</div></div><div class="item-sub">${num(t.damage)}</div></div>`).join('')
+        : '<div class="empty"><b>Пока тихо</b>Станьте первым, кто ранит Владыку</div>'}
+    </div>`;
+
+  const btn = $('#btnBoss', v);
+  if (btn) btn.addEventListener('click', () => startLiveBattle('boss'));
+}
+
+/* -------------------------------- ГЕРОИ --------------------------------- */
+function renderHeroes(v) {
+  const u = S.user;
+  const list = [...u.heroes].sort((a, b) => b.power - a.power);
+
+  v.innerHTML = `
+    <div class="section-head">
+      <div><p class="eyebrow">Коллекция</p><h2 class="h1">Герои</h2></div>
+      <div class="sub" style="font-size:10.5px;color:var(--dim)">${list.length} / ${u.team.length} в команде</div>
+    </div>
+    <div class="btn-row" style="margin-bottom:12px">
+      <button class="btn small ${S.fuseMode ? 'solid' : ''}" id="btnFuseMode">
+        ${S.fuseMode ? `Выбрано ${S.fusePicked.length}/3 — слить` : 'Слияние 3 → 1'}
+      </button>
+      <button class="btn small ghost" id="btnManage">Состав</button>
+      ${S.fuseMode ? '<button class="btn small ghost" id="btnFuseCancel">Отмена</button>' : ''}
+    </div>
+    <div class="hero-grid" id="heroGrid">
+      ${list.map((h) => heroCard(h, { selected: S.fusePicked.includes(h.uid) })).join('')}
+    </div>
+    <div class="section-head"><h3 class="h2">Инвентарь</h3></div>
+    <div id="invList">${renderInventory()}</div>
+  `;
+
+  $$('[data-hero]', v).forEach((card) => {
+    card.addEventListener('click', () => {
+      if (S.fuseMode) return toggleFuse(card.dataset.hero);
+      openHeroSheet(card.dataset.hero);
+    });
+  });
+
+  $('#btnFuseMode').addEventListener('click', () => {
+    if (S.fuseMode) {
+      if (S.fusePicked.length !== 3) return showToast('Выберите ровно 3 героя', 'err');
+      doFuse();
+    } else {
+      S.fuseMode = true; S.fusePicked = [];
+      renderView();
+      showToast('Выберите 3 героя одного ранга', 'info', 3200);
+    }
+  });
+  const cancel = $('#btnFuseCancel');
+  if (cancel) cancel.addEventListener('click', () => { S.fuseMode = false; S.fusePicked = []; renderView(); });
+  $('#btnManage').addEventListener('click', openTeamSheet);
+  bindInventory(v);
+}
+
+function toggleFuse(uid) {
+  const hero = S.user.heroes.find((h) => h.uid === uid);
+  const idx = S.fusePicked.indexOf(uid);
+  if (idx >= 0) S.fusePicked.splice(idx, 1);
+  else {
+    if (S.fusePicked.length >= 3) return showToast('Уже выбрано 3 героя', 'info');
+    const first = S.user.heroes.find((h) => h.uid === S.fusePicked[0]);
+    if (first && first.stars !== hero.stars) return showToast('Герои должны быть одного ранга', 'err');
+    if ((S.user.team || []).includes(uid)) return showToast('Герой в команде — уберите его из состава', 'err');
+    S.fusePicked.push(uid);
+  }
+  renderView();
+}
+
+async function doFuse() {
+  const r = await api('/api/fuse', { method: 'POST', body: { heroes: S.fusePicked } });
+  if (!r.ok) return showToast(r.message || 'Слияние не удалось', 'err');
+  S.user = r.user;
+  S.fuseMode = false;
+  S.fusePicked = [];
+  renderHud();
+  renderView();
+  showSummonReveal(r.hero);
+}
+
+function renderInventory() {
+  const items = S.user.items || [];
+  if (!items.length) return '<div class="empty"><b>Пусто</b>Предметы падают в кампании</div>';
+  return items.slice(0, 30).map((it) => {
+    const eq = it.equippedBy ? S.user.heroes.find((h) => h.uid === it.equippedBy) : null;
+    return `
+      <div class="item-row" style="--rc:${RARITY_COLOR[it.rarity]}">
+        <div class="item-icon"><img src="${it.icon}" alt=""></div>
+        <div style="min-width:0;flex:1">
+          <div class="item-name">${SLOT_RU[it.slot]}${it.level ? ` +${it.level}` : ''}</div>
+          <div class="item-sub">${it.setName} · ${STAT_RU[it.main.stat]} +${num(it.main.value)}</div>
+          <div class="item-sub">${eq ? esc(eq.name) : 'не надет'}</div>
+        </div>
+        <div class="item-actions">
+          ${eq
+            ? `<button class="btn small ghost" data-unequip="${it.uid}">Снять</button>`
+            : `<button class="btn small" data-equip-pick="${it.uid}">Надеть</button>`}
+          <button class="btn small ghost" data-forge="${it.uid}">Ковка</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function bindInventory(root) {
+  $$('[data-unequip]', root).forEach((b) => b.addEventListener('click', async () => {
+    const r = await api('/api/item/unequip', { method: 'POST', body: { itemUid: b.dataset.unequip } });
+    if (!r.ok) return showToast('Не удалось снять', 'err');
+    S.user = r.user; renderHud(); renderView();
+    showToast('Предмет снят', 'ok');
+  }));
+
+  $$('[data-forge]', root).forEach((b) => b.addEventListener('click', async () => {
+    const r = await api('/api/forge', { method: 'POST', body: { itemUid: b.dataset.forge } });
+    if (!r.ok) return showToast(r.message || 'Кузница недоступна', 'err');
+    S.user = r.user; renderHud(); renderView();
+    showToast(`Предмет улучшен до +${r.item.level}`, 'ok');
+  }));
+
+  $$('[data-equip-pick]', root).forEach((b) => b.addEventListener('click', () => {
+    const it = S.user.items.find((i) => i.uid === b.dataset.equipPick);
+    openEquipSheet(it);
+  }));
+}
+
+/* ---- Шит героя ---- */
+function openHeroSheet(uid) {
+  const h = S.user.heroes.find((x) => x.uid === uid);
+  if (!h) return;
+  const inTeam = (S.user.team || []).includes(uid);
+
+  const equippedBySlot = {};
+  for (const it of S.user.items) if (it.equippedBy === uid) equippedBySlot[it.slot] = it;
+
+  const wrap = el('div', 'sheet-wrap');
+  wrap.innerHTML = `
+    <div class="sheet-bg"></div>
+    <div class="sheet" style="--aff-soft:${AFF_HOST[h.affinity]}">
+      <div class="sheet-grip"></div>
+      <div class="sheet-head">
+        <div class="sheet-art"><img src="${h.img}" alt=""></div>
+        <div class="sheet-title">
+          <h2 class="sheet-name">${esc(h.name)}</h2>
+          <p class="sheet-sub">${esc(h.title)}</p>
+          <div class="badges">
+            <span class="badge aff" style="--aff:${AFF_COLOR[h.affinity]}">${AFF_RU[h.affinity]}</span>
+            <span class="badge">${CLASS_RU[h.className]}</span>
+            <span class="badge">ур. ${h.level}/${h.maxLevel}</span>
+          </div>
+          <div class="stars" style="font-size:12px;margin-top:8px">${starsHtml(h.stars)}</div>
+          <div class="sub" style="font-size:10.5px;margin-top:6px">Сила <b style="color:var(--gold)">${num(h.power)}</b></div>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        ${Object.entries(h.stats).map(([k, val]) => `
+          <div class="stat">
+            <img src="${STAT_ICON[k]}" alt="">
+            <span>${STAT_RU[k]}</span>
+            <b>${k === 'crit' || k === 'critDmg' ? val + '%' : num(val)}</b>
+          </div>`).join('')}
+      </div>
+
+      ${h.activeSets && h.activeSets.length ? `
+        <div class="section-title">Сеты</div>
+        ${h.activeSets.map((s) => `<div class="badge" style="margin:0 4px 4px 0;color:var(--gold)">${esc(s.name)} (${s.need})</div>`).join('')}
+      ` : ''}
+
+      <div class="section-title">Умения</div>
+      ${(h.skills || []).map((sk) => `
+        <div class="skill">
+          <div class="skill-top">
+            <span class="skill-name">${esc(sk.name)}</span>
+            <span class="skill-cd">${sk.cd ? `КД ${sk.cd} хода` : 'базовая'}</span>
+          </div>
+          <div class="skill-desc">${esc(sk.desc || '')}</div>
+        </div>`).join('')}
+
+      <div class="section-title">Экипировка</div>
+      <div class="slots">
+        ${Object.keys(SLOT_RU).map((slot) => {
+          const it = equippedBySlot[slot];
+          return `
+            <button class="slot ${it ? 'filled' : ''}" data-slot="${slot}" style="${it ? `--rc:${RARITY_COLOR[it.rarity]}` : ''}">
+              ${it ? `<span class="slot-lvl">+${it.level}</span>` : ''}
+              <img src="${it ? it.icon : 'images/items/item_' + slot + '.svg'}" alt="">
+              <span class="slot-name">${SLOT_RU[slot]}</span>
+            </button>`;
+        }).join('')}
+      </div>
+
+      <div class="btn-row" style="margin-top:16px">
+        <button class="btn full ${inTeam ? 'ghost' : 'solid'}" id="btnTeam">${inTeam ? 'Убрать из команды' : 'В команду'}</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const close = () => wrap.remove();
+  wrap.querySelector('.sheet-bg').addEventListener('click', close);
+
+  $$('[data-slot]', wrap).forEach((b) => b.addEventListener('click', () => {
+    close();
+    openSlotSheet(h, b.dataset.slot);
+  }));
+
+  wrap.querySelector('#btnTeam').addEventListener('click', async () => {
+    let team = [...(S.user.team || [])];
+    if (team.includes(uid)) team = team.filter((x) => x !== uid);
+    else {
+      if (team.length >= 4) return showToast('В команде максимум 4 героя', 'err');
+      team.push(uid);
+    }
+    const r = await api('/api/team', { method: 'POST', body: { team } });
+    if (!r.ok) return showToast(r.message || 'Ошибка', 'err');
+    S.user = r.user;
+    close();
+    renderHud();
+    renderView();
+    showToast(team.includes(uid) ? 'Герой в команде' : 'Герой убран из команды', 'ok');
+  });
+}
+
+/* ---- Выбор предмета в слот ---- */
+function openSlotSheet(hero, slot) {
+  const items = (S.user.items || []).filter((i) => i.slot === slot && (!i.equippedBy || i.equippedBy === hero.uid));
+  const wrap = el('div', 'sheet-wrap');
+  wrap.innerHTML = `
+    <div class="sheet-bg"></div>
+    <div class="sheet">
+      <div class="sheet-grip"></div>
+      <h3 class="h2" style="margin-bottom:4px">${SLOT_RU[slot]}</h3>
+      <p class="sub" style="margin-bottom:14px">${esc(hero.name)}</p>
+      ${items.length ? items.map((it) => `
+        <div class="item-row" style="--rc:${RARITY_COLOR[it.rarity]}">
+          <div class="item-icon"><img src="${it.icon}" alt=""></div>
+          <div style="min-width:0;flex:1">
+            <div class="item-name">${RARITY_RU[it.rarity]}${it.level ? ` +${it.level}` : ''}</div>
+            <div class="item-sub">${it.setName} · ${STAT_RU[it.main.stat]} +${num(it.main.value)}</div>
+            <div class="item-sub">${(it.subs || []).map((s) => `${STAT_RU[s.stat]} +${num(s.value)}`).join(' · ')}</div>
+          </div>
+          <div class="item-actions">
+            ${it.equippedBy ? `<button class="btn small ghost" data-x="${it.uid}">Снять</button>`
+              : `<button class="btn small solid" data-e="${it.uid}">Надеть</button>`}
+          </div>
+        </div>`).join('') : `<div class="empty"><b>Нет предметов</b>Этот слот пуст</div>`}
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('.sheet-bg').addEventListener('click', () => wrap.remove());
+
+  $$('[data-e]', wrap).forEach((b) => b.addEventListener('click', async () => {
+    const r = await api('/api/item/equip', { method: 'POST', body: { itemUid: b.dataset.e, heroUid: hero.uid } });
+    if (!r.ok) return showToast('Не удалось надеть', 'err');
+    S.user = r.user;
+    wrap.remove();
+    renderHud();
+    renderView();
+    showToast('Экипировано', 'ok');
+  }));
+  $$('[data-x]', wrap).forEach((b) => b.addEventListener('click', async () => {
+    const r = await api('/api/item/unequip', { method: 'POST', body: { itemUid: b.dataset.x } });
+    if (!r.ok) return showToast('Ошибка', 'err');
+    S.user = r.user;
+    wrap.remove();
+    renderHud();
+    renderView();
+  }));
+}
+
+/* ---- Инвентарь: выбор героя под предмет ---- */
+function openEquipSheet(item) {
+  if (!item) return;
+  const list = S.user.heroes;
+  const wrap = el('div', 'sheet-wrap');
+  wrap.innerHTML = `
+    <div class="sheet-bg"></div>
+    <div class="sheet">
+      <div class="sheet-grip"></div>
+      <h3 class="h2">Надеть: ${SLOT_RU[item.slot]}</h3>
+      <p class="sub" style="margin:4px 0 14px">${RARITY_RU[item.rarity]} · ${item.setName}</p>
+      ${list.map((h) => `
+        <button class="item-row" data-hero-equip="${h.uid}" style="width:100%;text-align:left">
+          <div class="item-icon" style="border-color:${AFF_COLOR[h.affinity]}"><img src="${h.img}" style="object-fit:contain" alt=""></div>
+          <div style="flex:1;min-width:0">
+            <div class="item-name" style="color:var(--text)">${esc(h.name)}</div>
+            <div class="item-sub">${CLASS_RU[h.className]} · ур.${h.level}</div>
+          </div>
+          <div class="item-sub">${num(h.power)}</div>
+        </button>`).join('')}
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('.sheet-bg').addEventListener('click', () => wrap.remove());
+  $$('[data-hero-equip]', wrap).forEach((b) => b.addEventListener('click', async () => {
+    const r = await api('/api/item/equip', { method: 'POST', body: { itemUid: item.uid, heroUid: b.dataset.heroEquip } });
+    if (!r.ok) return showToast('Ошибка', 'err');
+    S.user = r.user;
+    wrap.remove();
+    renderHud();
+    renderView();
+    showToast('Экипировано', 'ok');
+  }));
+}
+
+/* ---- Управление составом ---- */
+function openTeamSheet() {
+  const wrap = el('div', 'sheet-wrap');
+  const team = S.user.team || [];
+  wrap.innerHTML = `
+    <div class="sheet-bg"></div>
+    <div class="sheet">
+      <div class="sheet-grip"></div>
+      <h3 class="h2">Боевой состав</h3>
+      <p class="sub" style="margin:4px 0 14px">Выберите до 4 героев</p>
+      ${S.user.heroes.map((h) => {
+        const on = team.includes(h.uid);
+        return `
+          <button class="item-row" data-toggle="${h.uid}" style="width:100%;text-align:left;${on ? 'border-color:var(--gold)' : ''}">
+            <div class="item-icon"><img src="${h.img}" style="object-fit:contain" alt=""></div>
+            <div style="flex:1;min-width:0">
+              <div class="item-name" style="color:var(--text)">${esc(h.name)}</div>
+              <div class="item-sub">${CLASS_RU[h.className]} · ${AFF_RU[h.affinity]} · ур.${h.level}</div>
+            </div>
+            <div class="badge" style="${on ? 'color:var(--gold);border-color:var(--gold)' : ''}">${on ? 'в составе' : 'добавить'}</div>
+          </button>`;
+      }).join('')}
+      <button class="btn full solid" id="saveTeam" style="margin-top:12px">Сохранить состав</button>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('.sheet-bg').addEventListener('click', () => wrap.remove());
+
+  let picked = [...team];
+  $$('[data-toggle]', wrap).forEach((b) => b.addEventListener('click', () => {
+    const id = b.dataset.toggle;
+    if (picked.includes(id)) picked = picked.filter((x) => x !== id);
+    else {
+      if (picked.length >= 4) return showToast('Максимум 4 героя', 'err');
+      picked.push(id);
+    }
+    b.style.borderColor = picked.includes(id) ? 'var(--gold)' : '';
+    const badge = b.querySelector('.badge');
+    badge.textContent = picked.includes(id) ? 'в составе' : 'добавить';
+    badge.style.color = picked.includes(id) ? 'var(--gold)' : '';
+    badge.style.borderColor = picked.includes(id) ? 'var(--gold)' : '';
+  }));
+
+  wrap.querySelector('#saveTeam').addEventListener('click', async () => {
+    if (!picked.length) return showToast('Нужен хотя бы один герой', 'err');
+    const r = await api('/api/team', { method: 'POST', body: { team: picked } });
+    if (!r.ok) return showToast(r.message || 'Ошибка', 'err');
+    S.user = r.user;
+    wrap.remove();
+    renderHud();
+    renderView();
+    showToast('Состав сохранён', 'ok');
+  });
+}
+
+/* ==========================================================================
+   6. БОЙ
+   ========================================================================== */
+function openBattle(cfg) {
+  S.battle = Object.assign({ speed: 1, playing: false }, cfg);
+  S.selectedTarget = null;
+
+  $('#battle').classList.remove('hidden');
+  $('#result').classList.add('hidden');
+  $('#result').innerHTML = '';
+  clearLog();
+  $('#battleName').textContent = cfg.title || 'Бой';
+  $('#battleTurn').textContent = 'ход 1';
+  renderField();
+  renderSkills();
+}
+
+function closeBattle() {
+  $('#battle').classList.add('hidden');
+  if (S.battle && S.battle.id && S.socket) {
+    S.socket.emit('battle:leave', { battleId: S.battle.id });
+  }
+  S.battle = null;
+}
+
+function unitAffVar(aff) { return AFF_COLOR[aff] || 'var(--gold)'; }
+
+function renderField() {
+  const B = S.battle;
+  if (!B) return;
+  const st = B.state;
+  const player = st.units.filter((u) => u.side === 'player');
+  const enemy = st.units.filter((u) => u.side !== 'player');
+
+  const unitHtml = (u) => {
+    const hpPct = pct((u.hp / u.maxHp) * 100);
+    const isTarget = S.selectedTarget === u.uid;
+    return `
+      <div class="unit ${u.isBoss ? 'boss' : ''} ${u.alive ? '' : 'dead'} ${st.actor === u.uid ? 'active' : ''} ${isTarget ? 'selected' : ''} ${u.side !== 'player' && u.alive ? 'targetable' : ''}"
+           data-uid="${u.uid}" data-side="${u.side}" style="--aff-soft:${AFF_HOST[u.affinity] || 'rgba(200,165,91,.1)'}">
+        <div class="unit-art"><img src="${u.img}" alt=""></div>
+        <div class="unit-body">
+          <div class="unit-name">${esc(u.name.split(' · ')[0])}</div>
+          <div class="u-hp"><i class="${u.side !== 'player' ? 'enemy' : ''}" data-hp="${u.uid}" style="width:${hpPct}%"></i></div>
+          <div class="u-hp-num" data-hpnum="${u.uid}">${num(u.hp)} / ${num(u.maxHp)}</div>
+          <div class="u-tm"><i data-tm="${u.uid}" style="width:${pct(u.tm || 0)}%"></i></div>
+          <div class="buffs" data-buffs="${u.uid}">${(u.buffs || []).map((b) => `<span class="buff ${b.type}">${BUFF_ICON[b.type] || '•'}</span>`).join('')}</div>
+        </div>
+        <div class="popups" data-popups="${u.uid}"></div>
+      </div>`;
+  };
+
+  $('#colPlayer').innerHTML = player.map(unitHtml).join('');
+  $('#colEnemy').innerHTML = enemy.map(unitHtml).join('');
+
+  $$('#colEnemy .unit').forEach((n) => n.addEventListener('click', () => {
+    S.selectedTarget = n.dataset.uid;
+    renderField();
+  }));
+}
+
+function unitNode(uid) {
+  return document.querySelector(`.unit[data-uid="${uid}"]`);
+}
+
+function setHp(uid, hp, maxHp) {
+  const bar = document.querySelector(`[data-hp="${uid}"]`);
+  const numEl = document.querySelector(`[data-hpnum="${uid}"]`);
+  const u = S.battle.state.units.find((x) => x.uid === uid);
+  if (u) { if (hp != null) u.hp = hp; if (maxHp) u.maxHp = maxHp; }
+  const mx = maxHp || (u && u.maxHp) || 1;
+  if (bar) bar.style.width = pct((hp / mx) * 100) + '%';
+  if (numEl) numEl.textContent = `${num(hp)} / ${num(mx)}`;
+}
+
+function popup(uid, text, kind) {
+  const host = document.querySelector(`[data-popups="${uid}"]`);
+  if (!host) return;
+  const p = el('span', `popup ${kind}`, text);
+  host.appendChild(p);
+  setTimeout(() => p.remove(), 1050);
+}
+
+function shakeField(strong) {
+  const f = $('#field');
+  f.classList.remove('shake');
+  void f.offsetWidth;
+  f.classList.add('shake');
+  if (strong && navigator.vibrate) { try { navigator.vibrate(18); } catch (e) {} }
+}
+
+function banner(text) {
+  const b = el('div', 'skill-banner', esc(text));
+  $('#battle').appendChild(b);
+  setTimeout(() => b.remove(), 720);
+}
+
+function markActive(uid) {
+  $$('.unit').forEach((n) => n.classList.toggle('active', n.dataset.uid === uid));
+}
+
+function markDead(uid) {
+  const n = unitNode(uid);
+  if (!n) return;
+  n.classList.add('dead');
+  const u = S.battle.state.units.find((x) => x.uid === uid);
+  if (u) { u.alive = false; u.hp = 0; }
+  setHp(uid, 0);
+}
+
+function setTm(uid, tm) {
+  const bar = document.querySelector(`[data-tm="${uid}"]`);
+  if (bar) bar.style.width = pct(tm) + '%';
+}
+
+function delay(ms) { return sleep(Math.max(30, ms / (S.battle ? S.speed : 1))); }
+
+function unitName(uid) {
+  const u = S.battle && S.battle.state.units.find((x) => x.uid === uid);
+  return u ? esc(u.name.split(' · ')[0]) : '—';
+}
+
+function pushLog(html) {
+  const host = $('#combatLog');
+  if (!host) return;
+  const line = document.createElement('div');
+  line.innerHTML = html;
+  host.prepend(line);
+  while (host.children.length > 3) host.lastElementChild.remove();
+}
+
+function clearLog() {
+  const host = $('#combatLog');
+  if (host) host.innerHTML = '';
+}
+
+/* ---- Проигрывание событий сервера ---- */
+async function playEvents(events) {
+  if (!events || !events.length) return;
+  for (const ev of events) {
+    switch (ev.type) {
+      case 'turn': {
+        markActive(ev.unit);
+        $('#battleTurn').textContent = 'ход ' + (ev.turnNo || 0);
+        await delay(150);
+        break;
+      }
+      case 'skill': {
+        banner(ev.skill);
+        pushLog(`<b>${unitName(ev.actor)}</b> · <i>${esc(ev.skill)}</i>`);
+        await delay(420);
+        break;
+      }
+      case 'damage': {
+        const kind = ev.source === 'poison' ? 'poison'
+          : ev.crit ? 'crit'
+          : ev.affinity === 'strong' ? 'strong'
+          : ev.affinity === 'weak' ? 'weak' : 'normal';
+        const label = ev.source === 'poison' ? `−${num(ev.dmg)}` : `−${num(ev.dmg)}`;
+        popup(ev.target, label, kind);
+        if (ev.absorbed) popup(ev.target, 'щит', 'weak');
+        pushLog(
+          ev.source === 'poison'
+            ? `${unitName(ev.target)} · яд <span class="num">−${num(ev.dmg)}</span>`
+            : `<b>${unitName(ev.actor)}</b> → ${unitName(ev.target)} <span class="num ${ev.crit ? 'good' : ''}">−${num(ev.dmg)}</span>${ev.crit ? ' крит' : ''}`
+        );
+        setHp(ev.target, ev.hp, ev.hp != null && ev.maxHp ? ev.maxHp : undefined);
+        if (ev.crit || ev.affinity === 'strong') shakeField(ev.crit);
+        await delay(ev.crit ? 320 : 220);
+        break;
+      }
+      case 'buff': {
+        const host = document.querySelector(`[data-buffs="${ev.targets[0]}"]`);
+        if (host) {
+          const b = el('span', `buff ${ev.buff}`, BUFF_ICON[ev.buff] || '•');
+          host.appendChild(b);
+        }
+        await delay(110);
+        break;
+      }
+      case 'counter': {
+        banner('Контратака');
+        pushLog(`<b>${unitName(ev.actor)}</b> · <i>контратака</i>`);
+        await delay(320);
+        break;
+      }
+      case 'death': {
+        markDead(ev.unit);
+        pushLog(`<b>${unitName(ev.unit)}</b> повержен`);
+        await delay(260);
+        break;
+      }
+      case 'end': {
+        await delay(220);
+        break;
+      }
+      case 'rewards': break;
+    }
+  }
+}
+
+function applyState(st) {
+  if (!st || !S.battle) return;
+  S.battle.state = st;
+  renderField();
+  renderSkills();
+  $('#battleTurn').textContent = 'ход ' + (st.turnNo || 0);
+}
+
+function renderSkills() {
+  const B = S.battle;
+  if (!B) return;
+  const st = B.state;
+  const actor = st.actor ? st.units.find((u) => u.uid === st.actor) : null;
+  const mine = actor && actor.side === 'player';
+  const hero = mine ? S.user.heroes.find((h) => h.uid === actor.uid) : null;
+  const skills = (hero && hero.skills) || [];
+
+  $('#turnInfo').innerHTML = B.playing ? 'Бой идёт…'
+    : mine ? `Ход: <b>${esc(actor.name.split(' · ')[0])}</b>`
+    : 'Ход противника';
+
+  const host = $('#skills');
+  if (!skills.length) { host.innerHTML = ''; return; }
+
+  host.innerHTML = skills.map((sk, i) => {
+    const cd = (actor && actor.cd && actor.cd[i]) || 0;
+    const disabled = !mine || cd > 0 || B.playing;
+    return `
+      <button class="skill-btn ${cd > 0 ? 'disabled' : ''} ${mine && cd === 0 ? 'ready' : ''}" data-skill="${i}" ${disabled ? 'disabled' : ''}>
+        <span class="sname">${esc(sk.name)}</span>
+        <span class="smeta">${sk.cd ? 'КД ' + sk.cd + ' хода' : 'базовая атака'}</span>
+        ${cd > 0 ? `<span class="cdmask">${cd}</span>` : ''}
+      </button>`;
+  }).join('');
+
+  $$('#skills [data-skill]').forEach((b) => b.addEventListener('click', () => playerAct(Number(b.dataset.skill))));
+}
+
+function setSkillsEnabled(on) {
+  $$('#skills .skill-btn').forEach((b) => { if (!on) b.disabled = true; });
+}
+
+/* ---- Живой бой (кампания / босс) ---- */
+async function startLiveBattle(mode, stage) {
+  if (!S.socket) return showToast('Нет соединения с сервером', 'err');
+
+  $('#battle').classList.remove('hidden');
+  $('#battleName').textContent = mode === 'boss' ? 'Рейд-босс' : 'Кампания';
+  $('#colPlayer').innerHTML = '<div class="skeleton" style="height:64px"></div>';
+  $('#colEnemy').innerHTML = '<div class="skeleton" style="height:64px"></div>';
+  $('#skills').innerHTML = '';
+  $('#turnInfo').textContent = 'Загрузка боя…';
+
+  const upd = nextUpdate();
+  S.socket.emit('battle:start', { mode, stage }, async (ack) => {
+    if (ack && ack.ok === false) {
+      $('#battle').classList.add('hidden');
+      showToast('Не удалось начать бой', 'err');
+    }
+  });
+
+  let payload;
+  try { payload = await Promise.race([upd, sleep(8000).then(() => null)]); } catch (e) { payload = null; }
+  if (!payload) {
+    $('#battle').classList.add('hidden');
+    return showToast('Сервер не ответил', 'err');
+  }
+
+  openBattle({
+    id: payload.battleId,
+    mode,
+    live: true,
+    title: mode === 'boss' ? 'Рейд-босс' : (stage ? 'Кампания · этап ' + stage : 'Кампания'),
+    state: payload.state,
+  });
+
+  await playEvents(payload.events);
+  applyState(payload.state);
+  await refreshState();
+
+  if (payload.state.over) handleBattleEnd(payload.state, payload.rewards);
+}
+
+let updateResolver = null;
+function nextUpdate() {
+  return new Promise((resolve) => { updateResolver = resolve; });
+}
+
+async function playerAct(skillIndex) {
+  const B = S.battle;
+  if (!B || !B.live || B.playing) return;
+  const st = B.state;
+  if (!st.actor) return;
+  const actor = st.units.find((u) => u.uid === st.actor);
+  if (!actor || actor.side !== 'player') return;
+
+  const hero = S.user.heroes.find((h) => h.uid === actor.uid);
+  const skill = hero && hero.skills[skillIndex];
+  const foes = st.units.filter((u) => u.alive && u.side !== 'player');
+  if (!foes.length) return;
+
+  let target = S.selectedTarget;
+  if (!target || !foes.some((f) => f.uid === target)) target = foes[0].uid;
+
+  B.playing = true;
+  renderSkills();
+
+  const upd = nextUpdate();
+  S.socket.emit('battle:action', { battleId: B.id, skillIndex, targetUid: target }, (ack) => {
+    if (ack && ack.ok === false) { /* ошибку покажет battle:error */ }
+  });
+
+  const payload = await upd;
+  await playEvents(payload.events);
+  applyState(payload.state);
+  B.playing = false;
+  renderSkills();
+  await refreshState();
+
+  if (payload.state.over) return handleBattleEnd(payload.state, payload.rewards);
+  if (B.autoQueued) { B.autoQueued = false; runAutoBattle(); }
+}
+
+function handleBattleEnd(state, rewards) {
+  const win = !!(state.result && state.result.win);
+  setTimeout(() => {
+    showResult({
+      win,
+      title: win ? 'Победа' : 'Поражение',
+      sub: win ? 'Противник повержен' : 'Отряд пал',
+      rewards: rewards || {},
+    });
+  }, 260);
+}
+
+function showResult({ win, title, sub, rewards, ratingDelta }) {
+  const host = $('#result');
+  const r = rewards || {};
+  const items = r.items || [];
+  host.classList.remove('hidden');
+  host.innerHTML = `
+    <div class="result-card">
+      <h2 class="result-title ${win ? 'win' : 'lose'}">${esc(title)}</h2>
+      <div class="result-sub">${esc(sub || '')}</div>
+      <div class="reward-row">
+        ${r.gold ? `<div class="reward gold"><img src="images/ui/icon_gold.svg" alt="">+${num(r.gold)}</div>` : ''}
+        ${r.stars ? `<div class="reward star"><img src="images/ui/icon_star.svg" alt="">+${num(r.stars)}</div>` : ''}
+        ${r.xp ? `<div class="reward xp">+${num(r.xp)} XP</div>` : ''}
+        ${r.damage ? `<div class="reward xp">${num(r.damage)} урона</div>` : ''}
+        ${ratingDelta ? `<div class="reward gold">${ratingDelta > 0 ? '+' : ''}${ratingDelta} рейт.</div>` : ''}
+      </div>
+      ${items.length ? items.map((it) => `
+        <div class="item-row" style="--rc:${RARITY_COLOR[it.rarity]};text-align:left">
+          <div class="item-icon"><img src="${it.icon}" alt=""></div>
+          <div style="flex:1"><div class="item-name">${RARITY_RU[it.rarity]} ${SLOT_RU[it.slot]}</div>
+          <div class="item-sub">${it.setName}</div></div>
+        </div>`).join('') : ''}
+      <button class="btn full solid" id="resultOk" style="margin-top:8px">Продолжить</button>
+    </div>`;
+  host.querySelector('#resultOk').addEventListener('click', async () => {
+    host.classList.add('hidden');
+    closeBattle();
+    await refreshState();
+    renderView();
+  });
+}
+
+/* ---- Авто-бой / выход ---- */
+async function runAutoBattle() {
+  const B = S.battle;
+  if (!B || !B.live || B.playing || B.state.over) return;
+  B.playing = true;
+  renderSkills();
+  const upd = nextUpdate();
+  S.socket.emit('battle:auto', { battleId: B.id });
+  const payload = await upd;
+  await playEvents(payload.events);
+  applyState(payload.state);
+  B.playing = false;
+  renderSkills();
+  await refreshState();
+  if (payload.state.over) handleBattleEnd(payload.state, payload.rewards);
+}
+
+$('#btnAuto').addEventListener('click', () => {
+  const B = S.battle;
+  if (!B) return;
+  if (!B.live) {
+    S.speed = S.speed === 1 ? 2 : 1;
+    return showToast(S.speed === 2 ? 'Ускорение ×2' : 'Обычная скорость', 'info', 1200);
+  }
+  if (B.playing) {
+    B.autoQueued = true;
+    return showToast('Авто-бой включится после анимации', 'info', 1400);
+  }
+  runAutoBattle();
+});
+
+$('#btnFlee').addEventListener('click', () => {
+  closeBattle();
+  showToast('Вы покинули бой', 'info');
+  refreshState().then(renderView);
+});
+
+/* ==========================================================================
+   7. АДМИНКА
+   ========================================================================== */
+function renderAdmin(v) {
+  v.innerHTML = `
+    <div class="section-head">
+      <div><p class="eyebrow">Служебное</p><h2 class="h1">Админка</h2></div>
+      <div class="sub" style="font-size:10.5px;color:var(--dim)">ID ${esc(S.user.tgId)}</div>
+    </div>
+
+    <div class="form-row">
+      <label class="field-label">Поиск игрока по Telegram ID</label>
+      <div style="display:flex;gap:8px">
+        <input class="input" id="admSearch" placeholder="8213153991" inputmode="numeric" style="flex:1">
+        <button class="btn" id="admFind">Найти</button>
+      </div>
+    </div>
+    <div id="admUser"></div>
+
+    <div class="section-title">Ресурсы</div>
+    <div class="card">
+      <div class="form-grid">
+        <div><label class="field-label">Золото</label><input class="input" id="admGold" type="number" value="1000" inputmode="numeric"></div>
+        <div><label class="field-label">Звёзды</label><input class="input" id="admStars" type="number" value="100" inputmode="numeric"></div>
+        <div><label class="field-label">Энергия</label><input class="input" id="admEnergy" type="number" value="50" inputmode="numeric"></div>
+        <div><label class="field-label">Рейтинг</label><input class="input" id="admRating" type="number" value="0" inputmode="numeric"></div>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn small solid" id="admGrant">Начислить</button>
+        <button class="btn small danger" id="admTake">Списать</button>
+      </div>
+    </div>
+
+    <div class="section-title">Выдать предмет</div>
+    <div class="card">
+      <div class="form-grid">
+        <div><label class="field-label">Слот</label>
+          <select class="input" id="admSlot">
+            ${Object.entries(SLOT_RU).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}
+          </select>
+        </div>
+        <div><label class="field-label">Редкость</label>
+          <select class="input" id="admRarity">
+            ${Object.entries(RARITY_RU).map(([k, n]) => `<option value="${k}" ${k === 'legendary' ? '' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        <div><label class="field-label">Уровень</label><input class="input" id="admItemLevel" type="number" value="0" min="0" max="15"></div>
+        <div><label class="field-label">Сет</label>
+          <select class="input" id="admSet">
+            <option value="">Случайный</option>
+            <option value="speed">Скорость</option>
+            <option value="attack">Атака</option>
+            <option value="life">Жизнь</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn small full solid" id="admGiveItem" style="margin-top:10px">Выдать предмет</button>
+    </div>
+
+    <div class="section-title">Выдать героя</div>
+    <div class="card">
+      <div class="form-grid">
+        <div><label class="field-label">Герой</label>
+          <select class="input" id="admHero">
+            ${Object.entries((S.data && S.data.heroes) || {}).map(([k, h]) => `<option value="${k}">${h.name} — ${h.title}</option>`).join('')}
+          </select>
+        </div>
+        <div><label class="field-label">Ранг</label>
+          <select class="input" id="admHeroStars">
+            ${[3, 4, 5, 6].map((s) => `<option value="${s}" ${s === 3 ? 'selected' : ''}>${s}★</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <button class="btn small full solid" id="admGiveHero" style="margin-top:10px">Выдать героя</button>
+    </div>
+
+    <div class="section-title">Блокировка</div>
+    <div class="card">
+      <div class="form-row" style="margin-bottom:8px">
+        <label class="field-label">Причина</label>
+        <input class="input" id="admReason" placeholder="Нарушение правил">
+      </div>
+      <div class="btn-row">
+        <button class="btn small danger" id="admBan">Забанить</button>
+        <button class="btn small" id="admUnban">Разбанить</button>
+      </div>
+    </div>
+  `;
+
+  const find = async () => {
+    const id = ($('#admSearch', v).value || '').trim();
+    if (!id) return showToast('Введите Telegram ID', 'err');
+    const r = await api('/api/admin/user/' + encodeURIComponent(id));
+    if (!r.ok) {
+      S.adminTarget = null;
+      $('#admUser', v).innerHTML = `<div class="empty"><b>Не найден</b>Игрок с ID ${esc(id)} отсутствует</div>`;
+      return showToast(r.message || 'Игрок не найден', 'err');
+    }
+    S.adminTarget = r.user;
+    $('#admUser', v).innerHTML = `
+      <div class="admin-user">
+        <div class="au-top">
+          <div class="au-avatar">${esc((r.user.name || '?')[0])}</div>
+          <div>
+            <div class="au-name">${esc(r.user.name)}</div>
+            <div class="au-id">ID ${esc(r.user.tgId)}${r.user.banned ? ' · <span style="color:#C4736A">забанен</span>' : ''}</div>
+          </div>
+        </div>
+        <div class="au-res">
+          <div><b>${num(r.user.gold)}</b><span>золото</span></div>
+          <div><b>${num(r.user.stars)}</b><span>звёзды</span></div>
+          <div><b>${r.user.energy}</b><span>энергия</span></div>
+          <div><b>${num(r.user.rating)}</b><span>рейтинг</span></div>
+        </div>
+        <div class="sub" style="margin-top:8px;font-size:11px">
+          Героев: ${r.user.heroes.length} · Предметов: ${r.user.items.length} · Сила: ${num(r.user.power)}
+        </div>
+      </div>`;
+    ($('#admSearch', v)).value = r.user.tgId;
+  };
+
+  $('#admFind', v).addEventListener('click', find);
+  $('#admSearch', v).addEventListener('keydown', (e) => { if (e.key === 'Enter') find(); });
+
+  const needTarget = () => {
+    if (!S.adminTarget) { showToast('Сначала найдите игрока', 'err'); return null; }
+    return S.adminTarget.tgId;
+  };
+
+  const grant = async (sign) => {
+    const tgId = needTarget(); if (!tgId) return;
+    const body = {
+      tgId,
+      gold: sign * Number($('#admGold', v).value || 0),
+      stars: sign * Number($('#admStars', v).value || 0),
+      energy: sign * Number($('#admEnergy', v).value || 0),
+      rating: sign * Number($('#admRating', v).value || 0),
+    };
+    const r = await api('/api/admin/grant', { method: 'POST', body });
+    if (!r.ok) return showToast(r.message || 'Ошибка', 'err');
+    S.adminTarget = r.user;
+    if (String(r.user.tgId) === String(S.user.tgId)) { S.user = r.user; renderHud(); }
+    await find();
+    showToast('Ресурсы обновлены', 'ok');
+  };
+
+  $('#admGrant', v).addEventListener('click', () => grant(1));
+  $('#admTake', v).addEventListener('click', () => grant(-1));
+
+  $('#admGiveItem', v).addEventListener('click', async () => {
+    const tgId = needTarget(); if (!tgId) return;
+    const body = {
+      tgId,
+      slot: $('#admSlot', v).value,
+      rarity: $('#admRarity', v).value,
+      level: Number($('#admItemLevel', v).value || 0),
+    };
+    const set = $('#admSet', v).value;
+    if (set) body.setId = set;
+    const r = await api('/api/admin/item', { method: 'POST', body });
+    if (!r.ok) return showToast(r.message || 'Ошибка', 'err');
+    showToast(`Выдан: ${RARITY_RU[r.item.rarity]} ${SLOT_RU[r.item.slot]}`, 'ok');
+    find();
+  });
+
+  $('#admGiveHero', v).addEventListener('click', async () => {
+    const tgId = needTarget(); if (!tgId) return;
+    const r = await api('/api/admin/hero', {
+      method: 'POST',
+      body: { tgId, key: $('#admHero', v).value, stars: Number($('#admHeroStars', v).value), level: 1 },
+    });
+    if (!r.ok) return showToast(r.message || 'Ошибка', 'err');
+    showToast(`Выдан: ${r.hero.name} ${r.hero.stars}★`, 'ok');
+    find();
+  });
+
+  $('#admBan', v).addEventListener('click', async () => {
+    const tgId = needTarget(); if (!tgId) return;
+    const r = await api('/api/admin/ban', {
+      method: 'POST',
+      body: { tgId, banned: true, reason: $('#admReason', v).value || 'Нарушение правил' },
+    });
+    if (!r.ok) return showToast(r.message || 'Ошибка', 'err');
+    showToast('Игрок заблокирован', 'err');
+    find();
+  });
+
+  $('#admUnban', v).addEventListener('click', async () => {
+    const tgId = needTarget(); if (!tgId) return;
+    const r = await api('/api/admin/ban', { method: 'POST', body: { tgId, banned: false } });
+    if (!r.ok) return showToast(r.message || 'Ошибка', 'err');
+    showToast('Игрок разблокирован', 'ok');
+    find();
+  });
+}
+
+/* ==========================================================================
+   8. ИНИЦИАЛИЗАЦИЯ
+   ========================================================================== */
+async function refreshState() {
+  const r = await api('/api/state');
+  if (!r.ok) return;
+  S.user = r.user;
+  S.campaign = r.campaign || [];
+  S.boss = r.boss || null;
+  S.data = r.data || S.data;
+  renderHud();
+}
+
+async function bootGame() {
+  await refreshState();
+  if (!S.user) throw new Error('NO_USER');
+
+  connectSocket().then((s) => {
+    S.socket = s;
+    s.on('battle:update', async (payload) => {
+      if (updateResolver) { const r = updateResolver; updateResolver = null; r(payload); return; }
+      /* Нежданное обновление (например, после переподключения) */
+      if (S.battle && payload.state) applyState(payload.state);
+    });
+    s.on('battle:error', (e) => showToast(e.message || 'Ошибка боя', 'err'));
+    s.on('connect_error', (err) => {
+      const msg = String((err && err.message) || '');
+      if (msg.indexOf('AUTH_FAILED') === 0) showToast('Ошибка авторизации сокета: ' + msg.split(':').pop(), 'err', 4000);
+      else showToast('Соединение прервано', 'err');
+    });
+  }).catch(() => showToast('Не удалось подключиться к серверу', 'err'));
+
+  gateEl.classList.add('hidden');
+  appEl.classList.remove('hidden');
+  renderTabs();
+  renderView();
+}
+
+/** Некоторые Android-клиенты отдают мост Telegram с задержкой — ждём до 2 с. */
+function waitForInitData(timeoutMs) {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const tick = () => {
+      const v = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+      if (v) return resolve(v);
+      if (Date.now() - started >= timeoutMs) return resolve('');
+      setTimeout(tick, 120);
+    };
+    tick();
+  });
+}
+
+(async () => {
+  if (!initData) {
+    initData = await waitForInitData(2000);
+    if (!initData) {
+      hardStop('<b>Нет данных авторизации.</b><br>Откройте мини-приложение через кнопку в боте, а не по прямой ссылке.', {
+        retry: true,
+      });
+      return;
+    }
+  }
+
+  try {
+    await bootGame();
+  } catch (e) {
+    console.error(e);
+    if (e && (e.message === 'AUTH' || e.message === 'BANNED')) return;
+    gateSpin.classList.add('hidden');
+    gateMsg.innerHTML = '<b>Не удалось загрузить игру.</b><br>Проверьте соединение и попробуйте снова.';
+    const retry = document.getElementById('gateRetry');
+    if (retry) { retry.classList.remove('hidden'); retry.onclick = () => location.reload(); }
+  }
+})();
+
+})();
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","spa":2}' crossorigin="anonymous"></script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5d6ffc9df36da8c',t:'MTc5NTE3MjkzMg=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5d6ffc9df36da8c',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
