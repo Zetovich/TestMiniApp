@@ -1,0 +1,36 @@
+{
+  "name": "shadow-vault-tma",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shadow Vault — пошаговая dark fantasy RPG для Telegram Mini Apps (Raiden-like). Серверная боевая математика, коллекция героев, экипировка, арена, рейд-босс.",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "dev:memory": "cross-env DB_MODE=memory TELEGRAM_BOT_TOKEN= node --watch server.js",
+    "check": "node --check server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.7.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  },
+  "keywords": [
+    "telegram",
+    "mini-app",
+    "rpg",
+    "turn-based",
+    "socket.io",
+    "mongoose"
+  ],
+  "license": "MIT"
+}
