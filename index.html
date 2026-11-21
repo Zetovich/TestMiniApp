@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>ZetGifts — Telegram Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- STRICT AUTH GATE -->
+  <div id="auth-gate" class="auth-gate">
+    <div id="auth-gate-text" class="auth-gate-text">Ошибка авторизации</div>
+  </div>
+
+  <!-- TOAST BANNER CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- MAIN APP -->
+  <div id="app" class="app hidden">
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo" id="header-rocket-slot"></div>
+        <span class="brand-title">ZetGifts</span>
+      </div>
+      <div class="topbar-right">
+        <button id="btn-topup-quick" class="balance-pill" type="button">
+          <span class="star-icon">⭐</span>
+          <span id="header-balance">0</span>
+          <span class="balance-plus">+</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <!-- ==================== TAB 1: GAMES (HUB + ALL GAMES) ==================== -->
+      <section id="tab-games" class="tab-panel active">
+        <!-- GAMES HUB (2-COLUMN MINI WINDOWS LIKE SCREENSHOT 1, TELEGRAM DARK THEME) -->
+        <div id="games-hub" class="games-hub">
+          <div class="hub-grid">
+            <button type="button" class="hub-card hub-crash" data-open-game="crash">
+              <div class="hub-card-top">
+                <span class="hub-live-pill"><span class="live-dot"></span>Live</span>
+              </div>
+              <img class="hub-card-art" src="gift_rocket.png" alt="Краш" />
+              <div class="hub-card-footer">
+                <div class="hub-card-title">Краш</div>
+                <div class="hub-card-sub">🚀 Ракета • до x100</div>
+              </div>
+            </button>
+
+            <button type="button" class="hub-card hub-cases" data-open-game="cases">
+              <div class="hub-card-top">
+                <span class="hub-tag-pill">от 35 ⭐</span>
+              </div>
+              <img class="hub-card-art" src="basic_giftbox.png" alt="Кейсы" />
+              <div class="hub-card-footer">
+                <div class="hub-card-title">Кейсы</div>
+                <div class="hub-card-sub">🎁 Подарки Telegram</div>
+              </div>
+            </button>
+
+            <button type="button" class="hub-card hub-craft" data-open-game="craft">
+              <div class="hub-card-top">
+                <span class="hub-tag-pill gold">NFT Кузница</span>
+              </div>
+              <img class="hub-card-art" src="craft_plush_pepe_5.png" alt="Крафт" />
+              <div class="hub-card-footer">
+                <div class="hub-card-title">Крафт</div>
+                <div class="hub-card-sub">⚒️ 5 моделей × 124</div>
+              </div>
+            </button>
+
+            <button type="button" class="hub-card hub-wheel" data-open-game="wheel">
+              <div class="hub-card-top">
+                <span class="hub-tag-pill">25 ⭐</span>
+              </div>
+              <img class="hub-card-art" src="basic_bear.png" alt="Колесо" />
+              <div class="hub-card-footer">
+                <div class="hub-card-title">Колесо</div>
+                <div class="hub-card-sub">🎡 Звёзды и гифты</div>
+              </div>
+            </button>
+
+            <button type="button" class="hub-card hub-mines" data-open-game="mines">
+              <div class="hub-card-top">
+                <span class="hub-tag-pill">5×5</span>
+              </div>
+              <img class="hub-card-art" src="basic_diamond.png" alt="Мины" />
+              <div class="hub-card-footer">
+                <div class="hub-card-title">Мины</div>
+                <div class="hub-card-sub">💎 Алмазы и бомбы</div>
+              </div>
+            </button>
+
+            <button type="button" class="hub-card hub-plinko" data-open-game="plinko">
+              <div class="hub-card-top">
+                <span class="hub-tag-pill">x5.0</span>
+              </div>
+              <img class="hub-card-art" src="gift_crystal.png" alt="Плинко" />
+              <div class="hub-card-footer">
+                <div class="hub-card-title">Плинко</div>
+                <div class="hub-card-sub">🎯 Физика падения</div>
+              </div>
+            </button>
+
+            <button type="button" class="hub-card hub-pvp" data-open-game="pvp">
+              <div class="hub-card-top">
+                <span class="hub-live-pill"><span class="live-dot"></span>PvP</span>
+              </div>
+              <img class="hub-card-art" src="basic_trophy.png" alt="PvP Колесо" />
+              <div class="hub-card-footer">
+                <div class="hub-card-title">PvP Колесо</div>
+                <div class="hub-card-sub">⚔️ Общий банк</div>
+              </div>
+            </button>
+
+            <button type="button" class="hub-card hub-upgrader" data-open-game="upgrader">
+              <div class="hub-card-top">
+                <span class="hub-tag-pill">до x10</span>
+              </div>
+              <img class="hub-card-art" src="basic_ring.png" alt="Апгрейдер" />
+              <div class="hub-card-footer">
+                <div class="hub-card-title">Апгрейдер</div>
+                <div class="hub-card-sub">⚡ Честный шанс</div>
+              </div>
+            </button>
+
+            <button type="button" class="hub-card hub-rb hub-card-wide" data-open-game="redblack">
+              <div class="hub-card-top">
+                <span class="hub-live-pill"><span class="live-dot"></span>15 сек</span>
+              </div>
+              <div class="hub-rb-icons"><span>🔴</span><span>⚫</span></div>
+              <div class="hub-card-footer">
+                <div class="hub-card-title">Красное / Чёрное</div>
+                <div class="hub-card-sub">Угадай цвет и забери x2 каждые 15 секунд</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- ACTIVE GAME SHELL (BACK HEADER + GAME VIEWS) -->
+        <div id="game-shell" class="game-shell hidden">
+          <div class="game-backbar">
+            <button id="btn-back-to-hub" type="button" class="back-btn">← Назад</button>
+            <div id="active-game-title" class="game-backbar-title">Игра</div>
+            <div class="game-backbar-spacer"></div>
+          </div>
+
+          <!-- 1. CRASH (ROCKET IN CENTER -> EXPLOSION ON CRASH) -->
+          <div id="game-crash" class="game-view">
+            <div class="crash-history" id="crash-history"></div>
+
+            <div class="crash-stage" id="crash-stage">
+              <div class="crash-grid-bg"></div>
+              <canvas id="crash-canvas"></canvas>
+              <div class="crash-center-overlay">
+                <div id="crash-status-pill" class="crash-status-pill">Ожидание ставок</div>
+                <div id="crash-multiplier" class="crash-multiplier">1.00x</div>
+                <!-- Rocket Lottie during flight, Explosion Lottie on crash (no dice!) -->
+                <div class="crash-lottie-wrap">
+                  <div id="crash-rocket" class="crash-lottie"></div>
+                  <div id="crash-explosion" class="crash-lottie hidden"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tg-card controls-card">
+              <div class="input-row">
+                <div class="input-box">
+                  <label>Ставка ⭐</label>
+                  <input id="crash-bet-input" type="number" min="5" max="50000" value="25" />
+                </div>
+                <div class="input-box">
+                  <label>Авто-вывод (x)</label>
+                  <input id="crash-auto-input" type="number" step="0.1" min="0" placeholder="Выкл" />
+                </div>
+              </div>
+              <div class="quick-chips" data-target="crash-bet-input">
+                <button type="button" class="chip" data-val="10">10</button>
+                <button type="button" class="chip" data-val="25">25</button>
+                <button type="button" class="chip" data-val="100">100</button>
+                <button type="button" class="chip" data-mult="2">x2</button>
+                <button type="button" class="chip" data-max="1">MAX</button>
+              </div>
+              <button id="crash-action-btn" class="tg-btn tg-btn-primary tg-btn-lg" type="button">
+                Сделать ставку
+              </button>
+            </div>
+
+            <div class="tg-card">
+              <div class="card-head">
+                <span class="card-title">Игроки в раунде</span>
+                <span id="crash-players-count" class="badge-muted">0</span>
+              </div>
+              <div id="crash-players-list" class="players-list">
+                <div class="empty-inline">Ожидание ставок игроков...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. CASES (MINI WINDOWS -> DETAIL PAGE WITH ROULETTE + DROPS LIST) -->
+          <div id="game-cases" class="game-view">
+            <!-- Mini-windows selector -->
+            <div id="cases-list-view">
+              <div id="cases-grid" class="cases-mini-grid"></div>
+            </div>
+
+            <!-- Selected case detail view -->
+            <div id="case-detail-view" class="hidden">
+              <div class="case-detail-head">
+                <button id="btn-back-to-cases" type="button" class="back-btn-sm">← Все кейсы</button>
+                <span id="case-detail-title" class="card-title">Кейс</span>
+                <span id="case-detail-price" class="badge-gold">35 ⭐</span>
+              </div>
+
+              <div class="tg-card case-roulette-card">
+                <div class="case-roulette-window" id="case-roulette-window">
+                  <div class="case-pointer-top"></div>
+                  <div class="case-pointer-bot"></div>
+                  <div id="case-strip" class="case-strip"></div>
+                </div>
+                <button id="case-open-btn" type="button" class="tg-btn tg-btn-primary tg-btn-lg" style="margin-top:12px">
+                  Открыть кейс
+                </button>
+              </div>
+
+              <div class="tg-card">
+                <div class="card-head">
+                  <span class="card-title">Что выпадает из кейса</span>
+                  <span class="badge-muted">Честные шансы</span>
+                </div>
+                <div id="case-drops-grid" class="case-drops-grid"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. CRAFT (EXACT TELEGRAM FORGE + 3D GLASS CUBE ANIMATION) -->
+          <div id="game-craft" class="game-view">
+            <div class="craft-hero" id="craft-hero">
+              <div class="craft-header-row">
+                <div>
+                  <h2 class="craft-title">Изготовление подарка</h2>
+                  <p class="craft-sub">Добавьте 1–4 улучшенных NFT одной коллекции</p>
+                </div>
+                <div id="craft-collection-pill" class="craft-col-pill">Выберите NFT</div>
+              </div>
+
+              <div class="craft-core-stage">
+                <div class="craft-core-ring" id="craft-core-ring">
+                  <div class="craft-core-inner">
+                    <div id="craft-chance-value" class="craft-chance-value">0%</div>
+                    <div class="craft-chance-label">Шанс успеха</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="craft-slots-grid" id="craft-slots-grid">
+                <button type="button" class="craft-slot" data-slot="0"><span class="slot-plus">+</span><span class="slot-pct">+10%</span></button>
+                <button type="button" class="craft-slot" data-slot="1"><span class="slot-plus">+</span><span class="slot-pct">+20%</span></button>
+                <button type="button" class="craft-slot" data-slot="2"><span class="slot-plus">+</span><span class="slot-pct">+30%</span></button>
+                <button type="button" class="craft-slot" data-slot="3"><span class="slot-plus">+</span><span class="slot-pct">+40%</span></button>
+              </div>
+
+              <div id="craft-attr-preview" class="craft-attr-preview hidden"></div>
+
+              <button id="craft-submit-btn" class="tg-btn tg-btn-craft tg-btn-lg" type="button" disabled>
+                ⚒️ Изготовить • 0%
+              </button>
+            </div>
+
+            <div class="tg-card">
+              <div class="card-head">
+                <span class="card-title">5 крафт-моделей коллекции</span>
+                <span class="badge-gold">Эксклюзив</span>
+              </div>
+              <div id="crafted-showcase" class="crafted-showcase"></div>
+            </div>
+          </div>
+
+          <!-- 4. LUCKY WHEEL (25 ⭐, CHEAP REGULAR NON-COLLECTIBLE GIFTS) -->
+          <div id="game-wheel" class="game-view">
+            <div class="tg-card game-stage-card">
+              <div class="card-head">
+                <span class="card-title">Колесо Удачи</span>
+                <span class="badge-gold">25 ⭐</span>
+              </div>
+              <div class="wheel-wrap">
+                <div class="wheel-pointer">▼</div>
+                <canvas id="wheel-canvas" width="320" height="320"></canvas>
+              </div>
+              <p class="hint-text">Выигрывайте ⭐ и обычные подарки Telegram: 🧸 Мишка, 🌹 Роза, 🎂 Торт, 🏆 Кубок!</p>
+              <button id="wheel-spin-btn" class="tg-btn tg-btn-gold tg-btn-lg" type="button">
+                Крутить за 25 ⭐
+              </button>
+            </div>
+          </div>
+
+          <!-- 5. MINES (5x5) -->
+          <div id="game-mines" class="game-view">
+            <div class="tg-card game-stage-card">
+              <div class="card-head">
+                <span class="card-title">Мины 5×5</span>
+                <span id="mines-mult-badge" class="badge-green">x1.00</span>
+              </div>
+              <div id="mines-grid" class="mines-grid"></div>
+              <div class="input-row" style="margin-top:12px">
+                <div class="input-box">
+                  <label>Ставка ⭐</label>
+                  <input id="mines-bet-input" type="number" min="5" max="50000" value="25" />
+                </div>
+                <div class="input-box">
+                  <label>Мины 💣</label>
+                  <select id="mines-count-select">
+                    <option value="3" selected>3 мины</option>
+                    <option value="5">5 мин</option>
+                    <option value="7">7 мин</option>
+                  </select>
+                </div>
+              </div>
+              <div class="btn-row" style="margin-top:10px">
+                <button id="mines-start-btn" class="tg-btn tg-btn-primary tg-btn-lg" type="button">Играть</button>
+                <button id="mines-cashout-btn" class="tg-btn tg-btn-success tg-btn-lg hidden" type="button">Забрать</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. PLINKO -->
+          <div id="game-plinko" class="game-view">
+            <div class="tg-card game-stage-card">
+              <div class="card-head">
+                <span class="card-title">Плинко</span>
+                <span class="badge-blue">Физика • до x5.0</span>
+              </div>
+              <div class="plinko-wrap">
+                <canvas id="plinko-canvas" width="340" height="300"></canvas>
+                <div id="plinko-buckets" class="plinko-buckets"></div>
+              </div>
+              <div class="input-row" style="margin-top:12px">
+                <div class="input-box">
+                  <label>Ставка ⭐</label>
+                  <input id="plinko-bet-input" type="number" min="5" max="50000" value="25" />
+                </div>
+              </div>
+              <div class="quick-chips" data-target="plinko-bet-input">
+                <button type="button" class="chip" data-val="10">10</button>
+                <button type="button" class="chip" data-val="25">25</button>
+                <button type="button" class="chip" data-val="100">100</button>
+                <button type="button" class="chip" data-mult="2">x2</button>
+              </div>
+              <button id="plinko-drop-btn" class="tg-btn tg-btn-primary tg-btn-lg" type="button">Бросить шар</button>
+            </div>
+          </div>
+
+          <!-- 7. PVP WHEEL -->
+          <div id="game-pvp" class="game-view">
+            <div class="tg-card game-stage-card">
+              <div class="card-head">
+                <span class="card-title">PvP Колесо</span>
+                <span id="pvp-pot-badge" class="badge-gold">Банк: 0 ⭐</span>
+              </div>
+              <div class="pvp-status-bar">
+                <span id="pvp-timer-pill" class="badge-blue">Ожидание игроков</span>
+                <span class="hint-inline">Чем больше ставка — тем шире сектор</span>
+              </div>
+              <div class="wheel-wrap">
+                <div class="wheel-pointer">▼</div>
+                <canvas id="pvp-canvas" width="300" height="300"></canvas>
+              </div>
+              <div id="pvp-last-winner" class="winner-banner hidden"></div>
+              <div class="input-row" style="margin-top:10px">
+                <div class="input-box">
+                  <label>Ваш вклад ⭐</label>
+                  <input id="pvp-bet-input" type="number" min="5" max="50000" value="50" />
+                </div>
+              </div>
+              <button id="pvp-join-btn" class="tg-btn tg-btn-primary tg-btn-lg" type="button">Войти в банк</button>
+            </div>
+            <div class="tg-card">
+              <div class="card-head"><span class="card-title">Участники раунда</span></div>
+              <div id="pvp-players-list" class="players-list">
+                <div class="empty-inline">Пока никто не вошёл в раунд</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 8. UPGRADER -->
+          <div id="game-upgrader" class="game-view">
+            <div class="tg-card game-stage-card">
+              <div class="card-head">
+                <span class="card-title">Апгрейдер</span>
+                <span id="upg-chance-badge" class="badge-green">Шанс: 50%</span>
+              </div>
+              <div class="upgrader-wheel-wrap">
+                <canvas id="upgrader-canvas" width="260" height="260"></canvas>
+                <div class="upgrader-center-info">
+                  <div id="upg-mult-display" class="upg-mult-big">x2</div>
+                  <div id="upg-payout-display" class="upg-payout-sub">50 ⭐</div>
+                </div>
+              </div>
+              <div class="mult-pills" id="upg-mult-pills">
+                <button type="button" class="mult-pill" data-mult="1.5">x1.5</button>
+                <button type="button" class="mult-pill active" data-mult="2">x2</button>
+                <button type="button" class="mult-pill" data-mult="3">x3</button>
+                <button type="button" class="mult-pill" data-mult="5">x5</button>
+                <button type="button" class="mult-pill" data-mult="10">x10</button>
+              </div>
+              <div class="input-row" style="margin-top:10px">
+                <div class="input-box">
+                  <label>Ставка ⭐</label>
+                  <input id="upg-bet-input" type="number" min="5" max="50000" value="25" />
+                </div>
+              </div>
+              <button id="upg-play-btn" class="tg-btn tg-btn-primary tg-btn-lg" type="button">Апгрейд</button>
+            </div>
+          </div>
+
+          <!-- 9. RED / BLACK -->
+          <div id="game-redblack" class="game-view">
+            <div class="tg-card game-stage-card">
+              <div class="card-head">
+                <span class="card-title">Красное / Чёрное</span>
+                <span id="rb-timer-badge" class="badge-blue">15.0с</span>
+              </div>
+              <div class="rb-progress-bar"><div id="rb-progress-fill" class="rb-progress-fill"></div></div>
+              <div class="rb-history" id="rb-history"></div>
+              <div class="rb-tape-window">
+                <div class="rb-pointer"></div>
+                <div id="rb-tape" class="rb-tape"></div>
+              </div>
+              <div class="input-row" style="margin-top:12px">
+                <div class="input-box">
+                  <label>Ставка ⭐</label>
+                  <input id="rb-bet-input" type="number" min="5" max="50000" value="25" />
+                </div>
+              </div>
+              <div class="rb-bet-buttons">
+                <button id="rb-bet-red" class="tg-btn tg-btn-red" type="button">🔴 Красное x2</button>
+                <button id="rb-bet-black" class="tg-btn tg-btn-dark" type="button">⚫ Чёрное x2</button>
+              </div>
+            </div>
+            <div class="tg-card">
+              <div class="card-head"><span class="card-title">Ставки раунда</span></div>
+              <div id="rb-bets-list" class="players-list">
+                <div class="empty-inline">Ожидание ставок...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 2: PROFILE & INVENTORY ==================== -->
+      <section id="tab-profile" class="tab-panel">
+        <div class="tg-card profile-card">
+          <div class="profile-top">
+            <div class="avatar-wrap">
+              <img id="profile-avatar" class="profile-avatar hidden" alt="" />
+              <div id="profile-avatar-fallback" class="profile-avatar-fallback">U</div>
+            </div>
+            <div class="profile-meta">
+              <div id="profile-name" class="profile-name">Загрузка...</div>
+              <div id="profile-username" class="profile-username">@user</div>
+              <div id="profile-id" class="profile-id">ID: —</div>
+            </div>
+          </div>
+
+          <div class="profile-balance-box">
+            <div>
+              <div class="balance-label">Ваш баланс</div>
+              <div class="balance-big"><span class="star-icon">⭐</span> <span id="profile-balance">0</span></div>
+            </div>
+            <div class="profile-quick-actions">
+              <button id="btn-open-history" class="tg-btn tg-btn-secondary" type="button">История</button>
+              <button id="btn-open-topup" class="tg-btn tg-btn-primary" type="button">Пополнить</button>
+            </div>
+          </div>
+
+          <button id="btn-open-catalog" class="tg-btn tg-btn-subtle" type="button" style="width:100%;margin-top:10px">
+            🛍️ Купить подарок Telegram (обычные + 124 коллекции)
+          </button>
+        </div>
+
+        <div class="tg-card">
+          <div class="card-head">
+            <span class="card-title">Инвентарь подарков</span>
+            <span id="inv-count" class="badge-muted">0</span>
+          </div>
+          <div class="inv-filters">
+            <button type="button" class="filter-pill active" data-filter="all">Все</button>
+            <button type="button" class="filter-pill" data-filter="upgraded">Улучшенные</button>
+            <button type="button" class="filter-pill" data-filter="regular">Обычные</button>
+            <button type="button" class="filter-pill" data-filter="crafted">Крафт</button>
+          </div>
+          <div id="inventory-grid" class="inventory-grid"></div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 3: ADMIN PANEL (ONLY ID: 8213153991) ==================== -->
+      <section id="tab-admin" class="tab-panel">
+        <div class="tg-card">
+          <div class="card-head">
+            <span class="card-title">🛡️ Панель Администратора</span>
+            <span class="badge-red">ADMIN</span>
+          </div>
+          <div class="admin-search-row">
+            <input id="admin-search-input" type="text" placeholder="Telegram ID или @username" />
+            <button id="admin-search-btn" class="tg-btn tg-btn-primary" type="button">Найти</button>
+          </div>
+        </div>
+
+        <div id="admin-user-card" class="tg-card hidden">
+          <div class="card-head">
+            <div>
+              <div id="admin-u-name" class="card-title">—</div>
+              <div id="admin-u-meta" class="hint-inline">ID: — • Баланс: — ⭐</div>
+            </div>
+            <span id="admin-u-ban-badge" class="badge-green">Активен</span>
+          </div>
+
+          <div class="admin-section">
+            <label>Изменить баланс ⭐</label>
+            <div class="admin-inline">
+              <input id="admin-bal-amount" type="number" value="1000" />
+              <button id="admin-bal-add" class="tg-btn tg-btn-success" type="button">+ Начислить</button>
+              <button id="admin-bal-sub" class="tg-btn tg-btn-danger" type="button">- Списать</button>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <label>Выдать подарок из 124 коллекций Telegram</label>
+            <select id="admin-gift-select"></select>
+            <div class="btn-row" style="margin-top:8px">
+              <button id="admin-give-regular" class="tg-btn tg-btn-secondary" type="button">Обычный</button>
+              <button id="admin-give-upgraded" class="tg-btn tg-btn-primary" type="button">Улучшенный (NFT)</button>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <label>Выдать эксклюзивный Крафт-подарок</label>
+            <select id="admin-craft-select"></select>
+            <button id="admin-give-crafted" class="tg-btn tg-btn-gold" type="button" style="width:100%;margin-top:8px">Выдать Крафт</button>
+          </div>
+
+          <button id="admin-ban-toggle" class="tg-btn tg-btn-danger" type="button" style="width:100%;margin-top:12px">Забанить пользователя</button>
+        </div>
+
+        <div class="tg-card">
+          <div class="card-head">
+            <span class="card-title">Последние игроки</span>
+            <button id="admin-refresh-users" class="tg-btn-pill" type="button">Обновить</button>
+          </div>
+          <div id="admin-users-list" class="players-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- BOTTOM NAVIGATION (ONLY GAMES, PROFILE, AND ADMIN IF ALLOWED) -->
+    <nav class="bottom-nav">
+      <button type="button" class="nav-item active" data-tab="games">
+        <span class="nav-icon">🎮</span>
+        <span class="nav-label">Игры</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="profile">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Профиль</span>
+      </button>
+      <button type="button" class="nav-item hidden" id="nav-admin-btn" data-tab="admin">
+        <span class="nav-icon">🛡️</span>
+        <span class="nav-label">Админка</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ==================== FULL-SCREEN TELEGRAM GIFT VIEWER MODAL ==================== -->
+  <div id="modal-gift" class="modal-overlay hidden">
+    <div class="tg-gift-sheet">
+      <div id="tg-gift-hero" class="tg-gift-hero">
+        <button type="button" class="tg-sheet-close" data-close="modal-gift">✕</button>
+        <div id="tg-gift-pattern-layer" class="tg-gift-pattern-layer"></div>
+        <div id="tg-gift-tier-ribbon" class="tg-gift-tier-ribbon hidden"></div>
+        <div class="tg-gift-art-wrap" id="tg-gift-art-wrap">
+          <img id="tg-gift-img" class="tg-gift-img" alt="" />
+          <div id="tg-gift-lottie" class="tg-gift-lottie hidden"></div>
+        </div>
+        <h2 id="tg-gift-title" class="tg-gift-title">Gift</h2>
+        <div id="tg-gift-subtitle" class="tg-gift-subtitle">Коллекционный подарок</div>
+      </div>
+
+      <div class="tg-gift-body">
+        <div id="tg-traits-table" class="tg-traits-table"></div>
+        <div id="tg-gift-actions" class="tg-gift-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TELEGRAM UPGRADE MODAL (SMOOTH HORIZONTAL MODELS + GRADIENT BG + VERTICAL TRAIT SCROLL) ==================== -->
+  <div id="modal-upgrade" class="modal-overlay hidden">
+    <div class="tg-upgrade-sheet">
+      <div id="upgrade-stage" class="upgrade-stage">
+        <div id="upg-bg-a" class="upg-bg-layer"></div>
+        <div id="upg-bg-b" class="upg-bg-layer" style="opacity:0"></div>
+        <canvas id="upgrade-fx-canvas" class="upgrade-fx-canvas"></canvas>
+        <button type="button" class="tg-sheet-close" data-close="modal-upgrade" id="upg-modal-close">✕</button>
+
+        <!-- Horizontal sliding model reel (left -> right like cases!) -->
+        <div class="upg-reel-viewport" id="upg-reel-viewport">
+          <div class="upg-reel-strip" id="upg-reel-strip"></div>
+        </div>
+        <div id="upgrade-collection-caption" class="upgrade-collection-caption">Коллекция</div>
+      </div>
+
+      <!-- Persistent traits table: texts smoothly scroll top-to-bottom synced with model & backdrop! -->
+      <div class="upgrade-body">
+        <div class="tg-traits-table upg-live-traits">
+          <div class="trait-row">
+            <span class="trait-key">Модель</span>
+            <span class="trait-val trait-scroll-box" id="upg-slot-model"><span class="trait-scroll-cur">Случайная</span></span>
+          </div>
+          <div class="trait-row">
+            <span class="trait-key">Фон</span>
+            <span class="trait-val trait-scroll-box" id="upg-slot-backdrop"><span class="trait-scroll-cur">Случайный</span></span>
+          </div>
+          <div class="trait-row">
+            <span class="trait-key">Узор</span>
+            <span class="trait-val trait-scroll-box" id="upg-slot-symbol"><span class="trait-scroll-cur">Случайный</span></span>
+          </div>
+          <div class="trait-row">
+            <span class="trait-key">Номер</span>
+            <span class="trait-val trait-scroll-box" id="upg-slot-mint"><span class="trait-scroll-cur">Новый #</span></span>
+          </div>
+        </div>
+        <button id="upgrade-confirm-btn" class="tg-btn tg-btn-primary tg-btn-lg" type="button" style="width:100%;margin-top:12px">
+          ✨ Улучшить за 25 ⭐
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CRAFT 3D TRANSPARENT CUBE ANIMATION & RESULT MODAL (SCREENSHOTS 13 & 14) ==================== -->
+  <div id="modal-craft-anim" class="modal-overlay hidden">
+    <div id="craft-anim-sheet" class="craft-anim-sheet state-rolling">
+      <div id="craft-anim-rays" class="craft-anim-rays hidden"></div>
+      <div class="craft-anim-topbar">
+        <button type="button" class="craft-anim-circle-btn" id="craft-anim-close-btn">✕</button>
+        <div class="craft-anim-heading">Изготовление подарка</div>
+        <div class="craft-anim-circle-btn muted">?</div>
+      </div>
+
+      <!-- 3D Transparent Glass Cube (NO numbers, NFTs attached to faces!) -->
+      <div class="craft-cube-stage">
+        <div class="craft-cube-scene">
+          <div id="craft-cube" class="craft-cube">
+            <div class="cube-face face-front" id="cube-face-front"></div>
+            <div class="cube-face face-back" id="cube-face-back"></div>
+            <div class="cube-face face-right" id="cube-face-right"></div>
+            <div class="cube-face face-left" id="cube-face-left"></div>
+            <div class="cube-face face-top" id="cube-face-top"></div>
+            <div class="cube-face face-bottom" id="cube-face-bottom"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status block below cube (matches Screenshots 13 & 14!) -->
+      <div id="craft-anim-status" class="craft-anim-status">
+        <div class="craft-status-title" id="craft-anim-title">⚒️ Изготовление...</div>
+        <div class="craft-status-sub" id="craft-anim-sub">Бросаем куб кузницы</div>
+        <div id="craft-anim-chance-pill" class="craft-chance-pill">Вероятность успеха 0%</div>
+      </div>
+
+      <!-- Lost gifts row (shown on failure exactly like Screenshot 14!) -->
+      <div id="craft-lost-row" class="craft-lost-row hidden"></div>
+
+      <div id="craft-anim-footer" class="craft-anim-footer hidden">
+        <button id="craft-anim-ok-btn" type="button" class="tg-btn tg-btn-primary tg-btn-lg" style="width:100%">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CRAFT INVENTORY PICKER MODAL ==================== -->
+  <div id="modal-craft-picker" class="modal-overlay hidden">
+    <div class="tg-modal-sheet">
+      <div class="modal-head">
+        <h3>Выберите улучшенный подарок</h3>
+        <button type="button" class="tg-sheet-close static" data-close="modal-craft-picker">✕</button>
+      </div>
+      <p id="craft-picker-hint" class="sheet-desc" style="margin-bottom:10px"></p>
+      <div id="craft-picker-grid" class="inventory-grid"></div>
+    </div>
+  </div>
+
+  <!-- ==================== HISTORY MODAL ==================== -->
+  <div id="modal-history" class="modal-overlay hidden">
+    <div class="tg-modal-sheet">
+      <div class="modal-head">
+        <h3>История операций</h3>
+        <button type="button" class="tg-sheet-close static" data-close="modal-history">✕</button>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </div>
+  </div>
+
+  <!-- ==================== TOP-UP STARS MODAL ==================== -->
+  <div id="modal-topup" class="modal-overlay hidden">
+    <div class="tg-modal-sheet">
+      <div class="modal-head">
+        <h3>Пополнить Telegram Stars ⭐</h3>
+        <button type="button" class="tg-sheet-close static" data-close="modal-topup">✕</button>
+      </div>
+      <div class="topup-presets">
+        <button type="button" class="topup-preset" data-stars="100">⭐ 100</button>
+        <button type="button" class="topup-preset" data-stars="250">⭐ 250</button>
+        <button type="button" class="topup-preset" data-stars="500">⭐ 500</button>
+        <button type="button" class="topup-preset" data-stars="1000">⭐ 1 000</button>
+        <button type="button" class="topup-preset" data-stars="2500">⭐ 2 500</button>
+        <button type="button" class="topup-preset" data-stars="5000">⭐ 5 000</button>
+      </div>
+      <div class="input-box" style="margin-top:12px">
+        <label>Или введите свою сумму ⭐</label>
+        <input id="topup-custom-input" type="number" min="10" max="100000" value="250" />
+      </div>
+      <button id="topup-pay-btn" class="tg-btn tg-btn-primary tg-btn-lg" type="button" style="width:100%;margin-top:12px">
+        Оплатить через Telegram Stars
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== TELEGRAM GIFT SHOP MODAL (BASIC + 124 REAL COLLECTIONS WITH REAL PRICES) ==================== -->
+  <div id="modal-catalog" class="modal-overlay hidden">
+    <div class="tg-modal-sheet modal-tall">
+      <div class="modal-head">
+        <h3>Купить подарок</h3>
+        <button type="button" class="tg-sheet-close static" data-close="modal-catalog">✕</button>
+      </div>
+      <input id="catalog-search" class="search-input" type="text" placeholder="Поиск подарка (Pepe, Cap, Мишка, Торт...)" />
+      <div id="catalog-grid" class="catalog-grid"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
