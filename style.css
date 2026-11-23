@@ -7135,54 +7135,6 @@ body {
   margin: 12px 0 10px !important;
 }
 
-/* 2. Separate Game Transition Loader */
-.game-loader {
-  position: fixed;
-  inset: 0;
-  z-index: 950;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 15, 24, 0.78);
-  transition: opacity 0.18s ease;
-}
-
-.game-loader.hidden {
-  display: none !important;
-}
-
-.game-loader-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 20px 28px;
-  border-radius: 18px;
-  background: rgba(19, 28, 41, 0.96);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-}
-
-.game-loader-spinner {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 3px solid rgba(56, 189, 248, 0.2);
-  border-top-color: #38bdf8;
-  animation: gameLoaderSpin 0.72s linear infinite;
-}
-
-@keyframes gameLoaderSpin {
-  to { transform: rotate(360deg); }
-}
-
-.game-loader-title {
-  font-size: 13.5px;
-  font-weight: 800;
-  color: #e2e8f0;
-  letter-spacing: 0.2px;
-}
-
 /* 3. Hub Cards for 4 New Games */
 .hub-card-art-wide {
   width: 82px !important;
