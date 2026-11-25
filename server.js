@@ -12,7 +12,7 @@ const { Server } = require('socket.io');
 // ======================== CONFIGURATION ========================
 const PORT = Number(process.env.PORT) || 3000;
 // Токен бота можно хранить прямо здесь; переменная окружения необязательна.
-const BOT_TOKEN_IN_CODE = '9094198940:AAG0ofO0UaeGFQWaD3O2Kfje6ubiu_7Ds74';
+const BOT_TOKEN_IN_CODE = '9094198940:AAEFS99YiomUbqGeUC7CoCAYV3Y0vAdcikU';
 const BOT_TOKEN = (process.env.BOT_TOKEN || '').trim() || BOT_TOKEN_IN_CODE.trim();
 if (!BOT_TOKEN) throw new Error('Укажите токен бота в BOT_TOKEN_IN_CODE в начале server.js.');
 const ADMIN_ID = String(process.env.ADMIN_ID || '8213153991');
