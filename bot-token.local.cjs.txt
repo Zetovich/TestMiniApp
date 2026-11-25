@@ -1,0 +1,2 @@
+// Приватный токен для запуска без Environment. Не публиковать.
+module.exports = '9094198940:AAEFS99YiomUbqGeUC7CoCAYV3Y0vAdcikU';
